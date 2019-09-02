@@ -1,0 +1,103 @@
+---
+title: "Nested Effects Models-based perturbation inference  \n
+Inference of unobserved perturbations from gene expression profiles."
+author: "Martin Pirkl, Niko Beerenwinkel"
+date: "`r Sys.Date()`"
+graphics: yes
+output: BiocStyle::pdf_document
+vignette: >
+    %\VignetteIndexEntry{nempi}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+If many genes are perturbed in a population of cells, this can lead to
+diseases like cancer. The perturbations can happen in different ways,
+e.g. via mutations, copy number abberations or methylation. However,
+not all perturbations are observed in all samples.
+
+Nested Effects Model-based perturbation inference (NEM$\pi$) uses
+observed perturbation profiles and gene expression data to infer
+unobserv perturbations and augment observed ones.
+
+# Installation and loading
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE, out.width="125%", fig.align="center",
+                      strip.white=TRUE, warning=FALSE, tidy=TRUE,
+                      #out.extra='style="display:block; margin:auto;"',
+                      fig.height = 4, fig.width = 8, error=FALSE)
+fig.cap0 <- "Heatmap of the simulated log odds. Effects are blue and no effects
+are red. Rows denote the observed E-genes and columns the S-genes. Each S-gene
+has been perturbed in many cells. The E-genes are annotated as how they are
+attached in the ground truth. E.g. E-genes named '1' are attached to S-gene
+'1' in the ground truth."
+paltmp <- palette()
+paltmp[3] <- "blue"
+paltmp[4] <- "brown"
+palette(paltmp)
+```
+Install the package with the bioconductor manager package.
+```{r, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("nempi")
+```
+Load the package with the library function.
+```{r}
+library(nempi)
+```
+
+# Small example
+
+We look at a small example for which we first simulate data and then
+infere the unobserved perturbations.
+
+## Data simulation
+
+seed <- 27
+Sgenes <- 3
+Egenes <- 10
+nCells <- 100
+uninform <- 1
+mw <- c(0.4, 0.3, 0.3)
+Nems <- 3
+noise <- 0.5
+set.seed(seed)    
+simmini <- simData(Sgenes = Sgenes, Egenes = Egenes,
+                  Nems = Nems, mw = mw, nCells = nCells, uninform = uninform)
+data <- simmini$data
+ones <- which(data == 1)
+zeros <- which(data == 0)
+data[ones] <- rnorm(length(ones), 1, noise)
+data[zeros] <- rnorm(length(zeros), -1, noise)
+epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
+                  bordercol = "transparent", xrot = 0, dendrogram = "both")
+```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
+
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
+# References:
+
+Markowetz, F., Bloch, J., and Spang, R. (2005). Non-transcriptional
+pathway features reconstructed from secondary effects
+of rna interference. Bioinformatics, 21(21), 4026–4032.
+
+Markowetz, F., Kostka, D., Troyanskaya, O. G., and Spang, R. (2007).
+Nested effects models for high-dimensional phenotyping
+screens. Bioinformatics, 23(13), i305–i312.
+
+Pirkl, M., Beerenwinkel, N.; Single cell network analysis with a mixture
+of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September 2018,
+Pages i964–i971, https://doi.org/10.1093/bioinformatics/bty602.
+
+Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK (2015).
+“limma powers differential expression analyses for RNA-sequencing and
+microarray studies.” Nucleic Acids Research, 43(7), e47.

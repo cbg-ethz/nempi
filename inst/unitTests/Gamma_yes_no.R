@@ -1,0 +1,6 @@
+D <- matrix(rnorm(1000*100), 1000, 100)
+colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
+Gamma <- nempi::getGamma(D)
+result <- nempi(D, Gamma = Gamma)
+result2 <- nempi(D)
+checkEquals(result$Gamma, result2$Gamma, checkNames = TRUE)
