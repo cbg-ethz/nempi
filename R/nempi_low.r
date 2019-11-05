@@ -1,4 +1,25 @@
 #' @noRd
+#' @import mnem
+getSgenes <- mnem:::getSgenes
+#' @noRd
+#' @import mnem
+modData <- mnem:::modData
+#' @noRd
+#' @import mnem
+mynem <- mnem:::mynem
+#' @noRd
+#' @import mnem
+scoreAdj <- mnem:::scoreAdj
+#' @noRd
+#' @import mnem
+mytc <- mnem:::mytc
+#' @noRd
+#' @import mnem
+theta2theta <- mnem:::theta2theta
+#' @noRd
+#' @import mnem
+getSgeneN <- mnem:::getSgeneN
+#' @noRd
 #' @importFrom stats cor
 pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
                   knowns = NULL) {
@@ -35,7 +56,6 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     if (!is.null(knowns)) {
         Gammasoft <- Gammasoft[which(rownames(Gammasoft) %in% knowns), ]
     }
-    glob <<- Gammasoft
     corres <- cor(as.vector(x$Gamma), as.vector(Gammasoft))
     x$Gamma <- apply(x$Gamma, 2, function(x) {
         y <- x*0

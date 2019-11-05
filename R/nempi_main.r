@@ -30,7 +30,7 @@
 #' @return nempi object
 #' @author Martin Pirkl
 #' @export
-#' @import mnem naturalsort
+#' @import mnem naturalsort nem matrixStats
 #' @examples
 #' D <- matrix(rnorm(1000*100), 1000, 100)
 #' colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
@@ -134,7 +134,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
                     start <- res$adj
                 }
             } else {
-                res <- scoreAdj(D, phi, Gamma = Gamma)
+                res <- scoreAdj(D, phi, Rho = Gamma)
                 res$adj <- phi
             }
         }
@@ -355,7 +355,8 @@ plotConvergence <- function(x, ...) {
 #' @return plot
 #' @author Martin Pirkl
 #' @export
-#' @import e1071 nnet randomForest mnem
+#' @import e1071 nnet randomForest mnem nem
+#' @importFrom stats predict
 #' @examples
 #' D <- matrix(rnorm(1000*100), 1000, 100)
 #' colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
@@ -367,6 +368,9 @@ plotConvergence <- function(x, ...) {
 #' result <- classpi(D)
 classpi <- function(D, unknown = "", full = TRUE,
                     method = "svm", size = NULL, MaxNWts = 10000, ...) {
+    ## predict.svm <- e1071:::predict.svm
+    ## predict.nnet <- nnet:::predict.nnet
+    ## predict.randomForest <- randomForest:::predict.randomForest
     samplenames <- colnames(D)
     realnames <- getSgenes(D)
     realnames <- naturalsort(realnames)
@@ -415,15 +419,15 @@ classpi <- function(D, unknown = "", full = TRUE,
             llold <- ll
             if (!full) {
                 if (method %in% "svm") {
-                    p <- e1071:::predict.svm(sres, test2, probability = TRUE)
+                    p <- predict(sres, test2, probability = TRUE)
                     p <- attr(p, "probabilities")
                     p <- p[, naturalsort(colnames(p))]
                 }
                 if (method %in% "nnet") {
-                    p <- nnet:::predict.nnet(sres, test2)
+                    p <- predict(sres, test2)
                 }
                 if (method %in% "randomForest") {
-                    p <- randomForest:::predict.randomForest(sres, test2,
+                    p <- predict(sres, test2,
                                                              type = "prob")
                     p <- p[, naturalsort(colnames(p))]
                 }
@@ -431,16 +435,16 @@ classpi <- function(D, unknown = "", full = TRUE,
                 colnames(Gamma) <- rep("", ncol(Gamma))
             } else {
                 if (method %in% "svm") {
-                    p <- e1071:::predict.svm(sres, traintest,
+                    p <- predict(sres, traintest,
                                              probability = TRUE)
                     p <- attr(p, "probabilities")
                     p <- p[, naturalsort(colnames(p))]
                 }
                 if (method %in% "nnet") {
-                    p <-  nnet:::predict.nnet(sres, traintest)
+                    p <-  predict(sres, traintest)
                 }
                 if (method %in% "randomForest") {
-                    p <- randomForest:::predict.randomForest(sres, traintest,
+                    p <- predict(sres, traintest,
                                                              type = "prob")
                     p <- p[, naturalsort(colnames(p))]
                 }
