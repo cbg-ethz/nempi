@@ -29,17 +29,27 @@ knitr::opts_chunk$set(message=FALSE, out.width="125%", fig.align="center",
                       #out.extra='style="display:block; margin:auto;"',
                       fig.height = 4, fig.width = 8, error=FALSE)
 fig.cap0 <- "Heatmap of the simulated log odds. Effects are blue and no effects
-are red. Rows denote the observed E-genes and columns the S-genes. Each S-gene
+are red. Rows denote the observed E-genes and columns the samples annoted by
+P-genes. Each S-gene
 has been perturbed in many cells. The E-genes are annotated as how they are
 attached in the ground truth. E.g. E-genes named '1' are attached to S-gene
 '1' in the ground truth."
+fig.cap1 <- "Heatmap of the probabilsitic perturbation matrix."
 paltmp <- palette()
 paltmp[3] <- "blue"
 paltmp[4] <- "brown"
 palette(paltmp)
 ```
-Install the package with the bioconductor manager package.
+
+The pacakge is not yet in bioconductor. Use devtools to install the
+latest version from gtihub. Install the package with the bioconductor
+manager package.
+
 ```{r, eval=FALSE}
+install.packages("devtools")
+library(devtools)
+install_github("cbg-ethz/nempi")
+
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("nempi")
@@ -56,26 +66,88 @@ infere the unobserved perturbations.
 
 ## Data simulation
 
+```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
+library(mnem)
 seed <- 27
-Sgenes <- 3
+Pgenes <- 3
 Egenes <- 10
-nCells <- 100
+samples <- 100
 uninform <- 1
-mw <- c(0.4, 0.3, 0.3)
-Nems <- 3
+Nems <- mw <- 1
 noise <- 0.5
+multi <- c(0.2, 0.1)
 set.seed(seed)    
-simmini <- simData(Sgenes = Sgenes, Egenes = Egenes,
-                  Nems = Nems, mw = mw, nCells = nCells, uninform = uninform)
+simmini <- simData(Sgenes = Pgenes, Egenes = Egenes,
+                  Nems = Nems, mw = mw, nCells = samples,
+                  uninform = uninform, multi = multi,
+                  badCells = floor(samples*0.05))
 data <- simmini$data
 ones <- which(data == 1)
 zeros <- which(data == 0)
 data[ones] <- rnorm(length(ones), 1, noise)
 data[zeros] <- rnorm(length(zeros), -1, noise)
 epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
-                  bordercol = "transparent", xrot = 0, dendrogram = "both")
-```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
+                  bordercol = "transparent", xrot = 0,
+                  dendrogram = "both")
+```
+The typical data input for NEM$\pi$ consists of a data matrix with
+                  samples as columns and features (genes) as rows. The
+                  columns are either labeled by their perturbed gene
+                  or unlabeled (default: ""). After the data
+                  simulation all samples are labeled. We lose $10\%$
+                  of the perturbation information.
 
+```{r}
+lost <- sample(1:ncol(data), floor(ncol(data)*0.1))
+colnames(data)[lost] <- ""
+```
+
+We use NEM$\pi$ and other methods to infer the perturbations.
+
+```{r}
+res <- nempi(data)
+
+print(nempi:::pifit(res, simmini, data)$cor)
+
+ressvm <- classpi(data)
+print(nempi:::pifit(ressvm, simmini, data)$cor)
+
+resnn <- classpi(data, method = "nnet")
+print(nempi:::pifit(resnn, simmini, data)$cor)
+
+resrf <- classpi(data, method = "randomForest")
+print(nempi:::pifit(resrf, simmini, data)$cor)
+```
+
+Comapred to support vector machines (svm), neural nets (nnet) and
+random forest (rf) class prediction, NEM$\pi$ achieves a higher
+accuracy.
+
+Alternatively, we can also provide NEM$\pi$ with a probabilistic
+perturbation matrix $\Gamma$. In the rows are the potentially perturbed
+genes and in the columns are the samples. The entries are between $0$
+and $1$, with the sum of all entries of a sample summing to $1$.
+
+```{r, fig.height=6, fig.width=10, fig.cap=fig.cap1}
+Gamma <- matrix(0, Pgenes, ncol(data))
+rownames(Gamma) <- seq_len(Pgenes)
+colnames(Gamma) <- colnames(data)
+for (i in seq_len(Pgenes)) {
+    Gamma[i, grep(paste0("^", i, "_|_", i,
+                        "$|_", i, "_|^", i, "$"),
+                 colnames(data))] <- 1
+}
+Gamma <- apply(Gamma, 2, function(x) return(x/sum(x)))
+Gamma[is.na(Gamma)] <- 0
+
+epiNEM::HeatmapOP(Gamma, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
+                  bordercol = "transparent", xrot = 0,
+                  dendrogram = "both")
+
+colnames(data) <- sample(seq_len(Pgenes), ncol(data), replace = TRUE)
+res <- nempi(data, Gamma = Gamma)
+
+print(nempi:::pifit(res, simmini, data)$cor)
 ```
 
 # Session information
