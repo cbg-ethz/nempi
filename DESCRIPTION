@@ -13,5 +13,5 @@ LazyData: true
 biocViews: Software, GeneExpression, DifferentialExpression, DifferentialMethylation, GeneSignaling, Pathways, Network, Classification, NeuralNetwork
 Imports: mnem, e1071, nnet, randomForest, naturalsort, graphics, stats, utils, nem, matrixStats
 VignetteBuilder: knitr
-Suggests: knitr, BiocGenerics
+Suggests: knitr, BiocGenerics, epiNEM
 RoxygenNote: 6.1.1
