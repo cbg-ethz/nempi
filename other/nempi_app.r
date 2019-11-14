@@ -540,55 +540,55 @@ for (k in 1:length(lost)) {
         myboxplot(cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "known prediction", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
     if (6 %in% show2) {
         myboxplot((cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show])+cbind(result[,1,k,3,show], result[,2,k,3,show], result[,3,k,3,show]))/2,
                   col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "balanced accuracy", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
     if (2 %in% show2) {
         myboxplot(cbind(result[,1,k,3,show], result[,2,k,3,show], result[,3,k,3,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "unknown prediction", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
     if (3 %in% show2) {
         myboxplot(cbind(result[,1,k,4,show], result[,2,k,4,show], result[,3,k,4,show]), col = cols, ylim = c(ymin2,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "perturbation profile correlation", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
     }
     if (4 %in% show2) {
         myboxplot(cbind(result[,1,k,1,show], result[,2,k,1,show], result[,3,k,1,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "network accuracy", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
     if (5 %in% show2) {
         ymax <- max(cbind(result[,1,k,5,show], result[,2,k,5,show], result[,3,k,5,show]))
         myboxplot(cbind(result[,1,k,5,show], result[,2,k,5,show], result[,3,k,5,show]), ylim = c(0, ymax), col = cols, main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "seconds", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
     if (7 %in% show2) {
         ymax <- max(cbind(result[,1,k,6,show], result[,2,k,6,show], result[,3,k,6,show]))
         myboxplot(cbind(result[,1,k,6,show], result[,2,k,6,show], result[,3,k,6,show]), ylim = c(0, ymax), col = cols, main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "ratio of null samples to uninformative samples", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
 }
 dev.off()
 
 ## several Sgenes in one plot:
 
-wrong <- 0 # 0,1
-knowns <- 8 # 800, 8
-show2 <- c(4) # 4,6
+wrong <-  0 # 0,1
+knowns <- 8 # 8, 1000
+show2 <- 2 # 1,4,6
 shownoise <- c(1,2,3)
 
 highnoise <- 1
@@ -601,18 +601,22 @@ if (wrong) {
 } else {
     lost <- c(0.1, 0.5, 0.9)
 }
-if (knowns == 0) {
+if (knowns > 8) {
     doSgenes <- c(5,10,15)#,20)
 } else {
     doSgenes <- c(50,100)#,200)
     lost <- c(0.1, 0.9)
 }
 
-show <- c((1:4)*2, 11, 12, 13, 10)
+if (show2 != 1) {
+    show <- c((1:4)*2, 11, 12, 13, 10)
+} else {
+    show <- 2
+}
 cols <- c("red", "blue", "darkgreen", "brown", "orange", "pink", "turquoise", "grey")
 cols <- rep(cols[1:length(show)], 3)
 
-if (wrong | knowns > 0) {
+if (wrong | knowns == 8) {
     parcols <- 2
     height0 <- 5.5
     lost2 <- lost[1:2]
@@ -630,23 +634,36 @@ dens <- 0
 ymin <- 0.5
 ymin2 <- 0
 
-if (6 %in% show2 | knowns == 0) {
-    pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2), width = height0)
+if (6 %in% show2 | knowns == 1000) {
+    if (4 == show2) {
+        pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2), width = height0)
+    } else {
+        pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2)-2.5*(1-wrong), width = height0)
+    }
 } else {
     a <- (5/4)
     pdf("temp.pdf", height = (((8/3)*length(doSgenes)+leg)*length(show2))*a, width = height0*a)
 }
-if (wrong == 0 & knowns == 0) {
-    par(mfrow=c((length(doSgenes)+1)*length(show2), parcols))
+if (wrong == 0 & knowns == 1000) {
+    if (show2 == 4) {
+        par(mfrow=c((length(doSgenes)+1)*length(show2), parcols))
+    } else {
+        par(mfrow=c((length(doSgenes)+1)*length(show2)-1, parcols))
+    }
 } else {
     par(mfrow=c(length(doSgenes)*length(show2), parcols))
 }
 for (Sgenes in doSgenes) {
     for (k in 1:length(lost2)) {
         for (s in show2) {
-            nCells <- 1000 # Sgenes*10*2
+            if (knowns == 1000) {
+                nCells <- Sgenes*10*2
+            } else {
+                nCells <- 1000
+            }
             if (wrong) {
                 noise2 <- 0.5
+                main <- paste0(Sgenes, " P-genes, incorrect")
                 load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
             } else {
                 main <- paste0(Sgenes, " P-genes, unobserved")
@@ -656,7 +673,13 @@ for (Sgenes in doSgenes) {
                     load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
                 }
             }
-            ylab <- "perturbation profile correlation"
+            if (s == 4) {
+                ylab <- "perturbation profile correlation"
+            } else if (s == 1) {
+                ylab = "normalised hamming distance"
+            } else if (s == 6) {
+                ylab <- "fraction of identified null samples"
+            }
             ylim <- c(ymin2,1)
             if (dimnames(result)[[4]][s] == "time") {
                 ylim <- NULL
@@ -664,25 +687,26 @@ for (Sgenes in doSgenes) {
             if (dimnames(result)[[4]][s] != "cor") {
                 ylab <- dimnames(result)[[4]][s]
             }
-            if (s == 6) {
-                ylab <- "fraction of identified null samples"
-            }
             main <- paste0(main, ": ", lost[k])
             if (knowns < Sgenes) { main <- paste0(main, "\n unknowns: ", Sgenes-knowns) }
             databox <- NULL
             for (i in shownoise) {
-                databox <- cbind(databox, result[,i,k,s,show])
+                if (s == 2) {
+                    databox <- cbind(databox, (result[,i,k,s,show] + result[,i,k,s,show])/2)
+                } else {
+                    databox <- cbind(databox, result[,i,k,s,show])
+                }
             }
             ## databox <- cbind(result[,1,k,show2,show], result[,2,k,show2,show], result[,3,k,4,show])
-            myboxplot(databox, col = cols, ylim = ylim, main = main, xlab = expression(sigma), ylab = ylab, box = box, scatter = scatter, dens = dens, xaxt = "n", border = cols, #notch = 1,
+            mnem:::myboxplot(databox, col = cols, ylim = ylim, main = main, xlab = expression(sigma), ylab = ylab, box = box, scatter = scatter, dens = dens, xaxt = "n", border = cols, #notch = 1,
                       medcol = "black")
             axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show))[1:length(shownoise)], c(1,3,5)[shownoise])
             abline(v=c(length(show)*(1:(length(shownoise)-1))+0.5), col = 1)
-            addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
+            mnem:::addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
         }
     }
 }
-if (wrong == 0 & knowns >= Sgenes) {
+if (wrong == 0 & knowns >= Sgenes & show2 == 4) {
     hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n")
     ## legend(0,1, c(expression(NEM~pi), "svm", "neural net", "random forest", "missForest", "random"), c("red", "blue", "darkgreen", "brown", "grey", "white"), box.col = "transparent", cex = 1, ncol = 3)
     legend(0,1, c(expression(NEM~pi), "svm", "neural net"), c("red", "blue", "darkgreen"), box.col = "transparent", cex = 1.5, ncol = 1)
@@ -766,7 +790,7 @@ Rho[2, c(2,4:7)] <- 1
 Rho[3, c(8:10, 10)] <- 1
 
 pdf("temp.pdf", width = 5, height = 5)
-p <- plotDnf(phi, edgelwd = 3, nodecol = list(P2 = "red", P3 = "red"), fontsize = 10)
+p <- mnem::plotDnf(phi, edgelwd = 3, nodecol = list(P2 = "red", P3 = "red"), fontsize = 10)
 epiNEM::HeatmapOP(Rho, col = "RdBu", Rowv = FALSE, aspect = "iso", colorkey = NULL, cexCol = 2, cexRow = 2)
 Rho2 <- t(mnem:::mytc(phi))%*%Rho
 Rho2[which(Rho2 > 1)] <- 1
