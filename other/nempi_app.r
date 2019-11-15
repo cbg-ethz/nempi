@@ -1,4 +1,4 @@
-## Sgenes <- 100; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 8; runs2 <- NA
+## Sgenes <- 100; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 8; runs2 <- NA; nCells <- 100
 
 library(naturalsort)
 library(nem)
@@ -11,7 +11,7 @@ library(missForest)
 library(class)
 library(CALIBERrfimpute)
 
-## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r"); sourceCpp("~/Documents/mnem/src/mm.cpp"); source("~/Documents/testing/nempi/R/nempi_main.r"); source("~/Documents/testing/nempi/R/nempi_low.r")
+## source("~/Documents/mnem/R/mnems.r"); source("~/Documents/mnem/R/mnems_low.r"); sourceCpp("~/Documents/mnem/src/mm.cpp"); source("~/Documents/nempi/R/nempi_main.r"); source("~/Documents/nempi/R/nempi_low.r")
 
 ## uncomment for leo/euler:
 source("mnems.r")
@@ -26,15 +26,19 @@ highnoise <- as.numeric(commandArgs(TRUE)[3])
 doclass <- as.numeric(commandArgs(TRUE)[4])
 knowns <- as.numeric(commandArgs(TRUE)[5])
 runs2 <- as.numeric(commandArgs(TRUE)[6])
+nCells <- as.numeric(commandArgs(TRUE)[7])
+
 ##
 
 if (is.na(knowns)) { knowns <- Sgenes }
 
 Egenes <- 10
-if (knowns < Sgenes) {
-    nCells <- 1000
-} else {
-    nCells <- Sgenes*10*2
+if (is.na(nCells)) {
+    if (knowns < Sgenes) {
+        nCells <- 1000
+    } else {
+        nCells <- Sgenes*10*2
+    }
 }
 
 runs <- 100
@@ -62,7 +66,6 @@ for (i in 1:runs) {
             next()
         }
     }
-    cat(i)
     for (j in 1:length(noises)) {
 
         ## if (knowns < Sgenes & j == 2) { next() }
@@ -75,7 +78,7 @@ for (i in 1:runs) {
                 Sgenes2 <- sort(sample(Sgenes, knowns))
                 Sgenes3 <- seq_len(Sgenes)[-Sgenes2]
             } else {
-                Sgenes2 <- Sgenes
+                Sgenes2 <- 1:Sgenes
             }
 
             noise1 <- noises[j]
@@ -86,6 +89,11 @@ for (i in 1:runs) {
             }
 
             sim <- simData(Sgenes = Sgenes, Egenes = Egenes, mw = 1, nCells = nCells, Nem = 1, multi = multi, badCells = floor(nCells*badCells))
+            if (!all(1:Sgenes %in% unique(unlist(strsplit(colnames(sim$data), "_"))))) {
+                kdata <- t(sim$Nem[[1]])
+                kdata <- kdata[rep(1:nrow(kdata), each = Egenes), , drop = FALSE]
+                sim$data <- cbind(sim$data[, -(1:ncol(kdata))], kdata)
+            }
             sdata <- sim$data
             sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, noise1)
             sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, noise1)
@@ -100,8 +108,16 @@ for (i in 1:runs) {
                 } else {
                     if (all(Sgenes2 %in% unique(colnames(sdata)[-lost2]))) { stop <- TRUE }
                 }
+                if (knowns < Sgenes) { stop <- TRUE }
             }
             colnames(sdata)[lost2] <- ""
+            if (knowns < Sgenes & !all(Sgenes2 %in% unique(unlist(strsplit(colnames(sdata)[-lost2], "_"))))) {
+                kdata <- t(sim$Nem[[1]])[, Sgenes2]
+                kdata <- kdata[rep(1:nrow(kdata), each = Egenes), , drop = FALSE]
+                kdata[which(kdata == 1)] <- rnorm(sum(kdata == 1), 1, noise1)
+                kdata[which(kdata == 0)] <- rnorm(sum(kdata == 0), -1, noise1)
+                sdata <- cbind(sdata[, -(1:ncol(kdata))], kdata)
+            }
             if (wrong) {
                 multi2 <- NULL
                 if (multi[1] != FALSE) { multi2 <- multi }
@@ -136,9 +152,11 @@ for (i in 1:runs) {
                                             paste0("^", Sgenes3, "$")), collapse = "|"), "", colnames(D))
                 full <- mytc(sim$Nem[[1]])[Sgenes3, Sgenes2]
                 Sgenes4 <- rownames(full)[which(apply(full, 1, sum) == 0)]
+            } else {
+                Sgenes4 <- 1:Sgenes
             }
 
-            ## source("~/Documents/testing/nempi/R/nempi_main.r"); source("~/Documents/testing/nempi/R/nempi_low.r");
+            ## source("~/Documents/nempi/R/nempi_main.r"); source("~/Documents/nempi/R/nempi_low.r")
 
             for (s in 2) {
                 type <- "null"
@@ -194,7 +212,6 @@ for (i in 1:runs) {
 
 
                 }
-                cat(s)
             }
             print("class")
 
@@ -310,7 +327,7 @@ for (i in 1:runs) {
             train <- t(D[, which(colnames(D) != "")])
             test <- t(D[, which(colnames(D) == "")])
             cl <- colnames(D)[which(colnames(D) != "")]
-            knnres <- knn(train, test, cl, k = 3, prob=TRUE)
+            knnres <- knn(train, test, cl, prob=TRUE)
             D2 <- D
             colnames(D2)[which(colnames(D2) %in% "")] <- as.character(knnres)
             tmp <- mynem(D2, multi = TRUE)
@@ -338,6 +355,7 @@ for (i in 1:runs) {
 
         }
     }
+    cat(paste0(i, "."))
 }
 
 if (is.na(runs2)) {
@@ -377,6 +395,10 @@ par(mfrow=c(2,3))
 plotConvergence.nempi(ures, type = "b", col = "red")
 
 ## start pipeline:
+
+system("scp nempi/other/nempi_app.r euler.ethz.ch:")
+system("scp nempi/R/nempi_main.r euler.ethz.ch:")
+system("scp nempi/R/nempi_low.r euler.ethz.ch:")
 
 Sgenes <- 5; wrong <- 1; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
 
@@ -418,17 +440,19 @@ rm error.txt
 rm output.txt
 rm .RData
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '0' '1' '1' < nempi_app.r"
+nCells=500
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '1' '1' '1' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '1' '1' '1' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '0' '1' '1' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '1' '1' '1' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
 ## new with unknowns
 
@@ -438,7 +462,9 @@ rm error.txt
 rm output.txt
 rm .RData
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '50' '0' '1' '1' '8' < nempi_app.r"
+nCells=500
+
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '50' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
 
 ram=10000
 
@@ -446,7 +472,7 @@ rm error.txt
 rm output.txt
 rm .RData
 
-bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '100' '0' '1' '1' '8' < nempi_app.r"
+bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '100' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
 
 ## parallel:
 
@@ -692,7 +718,7 @@ for (Sgenes in doSgenes) {
             databox <- NULL
             for (i in shownoise) {
                 if (s == 2) {
-                    databox <- cbind(databox, (result[,i,k,s,show] + result[,i,k,s,show])/2)
+                    databox <- cbind(databox, (result[,i,k,s,show] + result[,i,k,s+1,show])/2)
                 } else {
                     databox <- cbind(databox, result[,i,k,s,show])
                 }

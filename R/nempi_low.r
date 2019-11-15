@@ -79,6 +79,7 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
               Gamma[, which(colnames(x$Gamma) != unknown)] == 0)
     fn <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 0 &
               Gamma[, which(colnames(x$Gamma) != unknown)] == 1)
+    rates1 <- c(tp, fp, tn, fn)
     if (balanced) {
         known <- (((tp)/(tp+fn))+((tn)/(tn+fp)))/2
     } else {
@@ -92,6 +93,7 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
               Gamma[, which(colnames(x$Gamma) == unknown)] == 0)
     fn <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 0 &
               Gamma[, which(colnames(x$Gamma) == unknown)] == 1)
+    rates2 <- c(tp, fp, tn, fn)
     if (balanced) {
         known2 <- (((tp)/(tp+fn))+((tn)/(tn+fp)))/2
     } else {
@@ -99,7 +101,7 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     }
     known <- c(known, known2)
     names(known) <- c("known", "unknown")
-    return(list(net = net, known = known, cor = corres))
+    return(list(net = net, known = known, cor = corres, knownRates = rates1, uknownRates = rates2))
 }
 #' @noRd
 #' @importFrom utils combn

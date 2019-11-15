@@ -331,7 +331,7 @@ nempibs <- function(D, bsruns = 100, bssize = 0.5, replace = TRUE, ...) {
 plotConvergence <- function(x, ...) {
     plot(x$lls, main = "log odds evolution", ylab = "log odds",
          xlab = "iterations", ...)
-    hist(x$probs, main = "sample probabilities", ylab = "probabilities")
+    hist(x$probs, main = "sample probabilities", xlab = "probabilities")
     plot(x$evoGamma, main = expression(evolution ~ of ~ Gamma),
          ylab = "sum of absolute distance", xlab = "iterations", ...)
     plot(x$evopi, main= expression(evolution ~ of ~ pi),
@@ -368,9 +368,6 @@ plotConvergence <- function(x, ...) {
 #' result <- classpi(D)
 classpi <- function(D, unknown = "", full = TRUE,
                     method = "svm", size = NULL, MaxNWts = 10000, ...) {
-    ## predict.svm <- e1071:::predict.svm
-    ## predict.nnet <- nnet:::predict.nnet
-    ## predict.randomForest <- randomForest:::predict.randomForest
     samplenames <- colnames(D)
     realnames <- getSgenes(D)
     realnames <- naturalsort(realnames)
