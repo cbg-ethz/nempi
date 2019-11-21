@@ -37,11 +37,6 @@ if (is.na(perturb)) { perturb <- 0 }
 
 docompete <- 1
 
-## if (perturb) {
-##     doclass <- 0
-##     docompete <- 0
-## }
-
 Egenes <- 10
 if (is.na(nCells)) {
     if (knowns < Sgenes) {
@@ -170,11 +165,11 @@ for (i in 1:runs) {
 
             s <- 2
             type <- "null"
-            if (perturb) {
+            if (perturb > 0) {
                 pertphi <- sim$Nem[[1]]
                 ppo <- order(apply(mytc(pertphi), 1, sum))
                 pertphi <- pertphi[ppo, ppo]
-                pp1 <- floor(0.1*sum(pertphi == 1))
+                pp1 <- floor(perturb*sum(pertphi == 1))
                 pertphi[sample(which(pertphi == 1), pp1)] <- 0
                 pp1 <- max(pp1, 1)
                 pp0 <- which(lower.tri(pertphi) & pertphi == 0)
@@ -540,7 +535,7 @@ rm .RData
 
 nCells=NA
 
-perturb=1
+perturb=0.5
 
 bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' ${perturb} < nempi_app.r"
 
@@ -593,19 +588,20 @@ bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram
 
 ## normal pipeline:
 
-Sgenes <- 5
+Sgenes <- 10
 highnoise <- 1
 complete <- 1
 Egenes <- 10
 nCells <- Sgenes*10*2
 multi <- c(0.2, 0.1)
+perturb <- 0
 
 ## Documents/nempi/old2/
 
 noise2 <- 0.5
-load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
 
-## load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+## load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
 
 result[which(is.na(result) == TRUE)] <- 0
 
@@ -614,7 +610,7 @@ paras <- expand.grid(c(0,1), c(0,1), c(0,1))
 box <- 1
 scatter <- ""#"random"
 dens <- 0
-show <- 1:9
+show <- c(1,2,3,4,7,8,9,6)
 show2 <- c(1,2,3)
 if (wrong) {
     width0 <- length(lost)*(10/3)
@@ -698,7 +694,7 @@ if (knowns > 8) {
 }
 
 if (show2 != 1) {
-    show <- c((1:4)*2, 11, 12, 13, 10)
+    show <- c(1:4, 7:9, 6)
 } else {
     show <- 2
 }
@@ -905,15 +901,15 @@ par(mfrow=c(1,4))
 sdata <- sim$data
 sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 1)
 sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 1)
-hist(sdata, main = expression(sigma ~ "= 1"))
+hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 1"))
 sdata <- sim$data
 sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 2)
 sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 2)
-hist(sdata, main = expression(sigma ~ "= 2"))
+hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 2"))
 sdata <- sim$data
 sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 3)
 sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 3)
-hist(sdata, main = expression(sigma ~ "= 3"))
+hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 3"))
 hist(D2, main = "TCGA breast cancer")
 dev.off()
 
