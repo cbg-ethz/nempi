@@ -134,7 +134,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
                     start <- res$adj
                 }
             } else {
-                res <- scoreAdj(D, phi, Rho = Gamma)
+                res <- scoreAdj(D, phi, Rho = Gamma, dotopo = TRUE)
                 res$adj <- phi
             }
         }

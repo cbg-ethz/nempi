@@ -1,4 +1,4 @@
-## Sgenes <- 100; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 8; runs2 <- NA; nCells <- 100
+## Sgenes <- 10; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 800; runs2 <- NA; nCells <- NA; perturb <- 1
 
 library(naturalsort)
 library(nem)
@@ -27,10 +27,20 @@ doclass <- as.numeric(commandArgs(TRUE)[4])
 knowns <- as.numeric(commandArgs(TRUE)[5])
 runs2 <- as.numeric(commandArgs(TRUE)[6])
 nCells <- as.numeric(commandArgs(TRUE)[7])
+perturb <- as.numeric(commandArgs(TRUE)[8])
 
 ##
 
 if (is.na(knowns)) { knowns <- Sgenes }
+
+if (is.na(perturb)) { perturb <- 0 }
+
+docompete <- 1
+
+## if (perturb) {
+##     doclass <- 0
+##     docompete <- 0
+## }
 
 Egenes <- 10
 if (is.na(nCells)) {
@@ -56,7 +66,7 @@ if (wrong) { lost <- lost[1:2] }
 
 if (knowns < Sgenes) { lost <- lost[c(1,3)] }
 
-result <- array(0, c(runs, length(noises), length(lost), 6, 13), list(rep("runs", runs), noises, lost, c("net", "known", "unknown", "cor", "time", "nullsamples"), c("unem_s_n", "unem_s_f_n", "svm", "svm_f", "nnet", "nnet_f", "rf", "rf_f", "empty", "random", "missForest", "mice", "knn")))
+result <- array(0, c(runs, length(noises), length(lost), 12, 9), list(rep("runs", runs), noises, lost, c("net", "tp", "fp", "cor", "time", "nullsamples", "tn", "fn", "tp2", "fp2", "tn2", "fn2"), c("nempi", "svm", "nnet", "rf", "empty", "random", "missForest", "mice", "knn")))
 
 getfalse <- 0
 
@@ -72,7 +82,7 @@ for (i in 1:runs) {
 
         for (k in 1:length(lost)) {
 
-            ## i <- j <- 1; k <- 2
+            ## i <- j <- 1; k <- 1
 
             if (knowns < Sgenes) {
                 Sgenes2 <- sort(sample(Sgenes, knowns))
@@ -158,24 +168,46 @@ for (i in 1:runs) {
 
             ## source("~/Documents/nempi/R/nempi_main.r"); source("~/Documents/nempi/R/nempi_low.r")
 
-            for (s in 2) {
-                type <- "null"
+            s <- 2
+            type <- "null"
+            if (perturb) {
+                pertphi <- sim$Nem[[1]]
+                ppo <- order(apply(mytc(pertphi), 1, sum))
+                pertphi <- pertphi[ppo, ppo]
+                pp1 <- floor(0.1*sum(pertphi == 1))
+                pertphi[sample(which(pertphi == 1), pp1)] <- 0
+                pp1 <- max(pp1, 1)
+                pp0 <- which(lower.tri(pertphi) & pertphi == 0)
+                pertphi[pp0] <- sample(c(rep(0, length(pp0)-pp1), rep(1, pp1)), length(pp0))
+                pertphi <- pertphi[naturalorder(rownames(pertphi)), naturalorder(colnames(pertphi))]
+                start <- as.numeric(format(Sys.time(), "%s"))
+                ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], combi = combi, multi = multi2, complete = complete, null = null, phi = pertphi)
+                s <- 1
+                result[i, j, k, 5, s] <- as.numeric(format(Sys.time(), "%s")) - start
+            } else {
                 start <- as.numeric(format(Sys.time(), "%s"))
                 ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], combi = combi, multi = multi2, complete = complete, null = null)
+                s <- 1
                 result[i, j, k, 5, s] <- as.numeric(format(Sys.time(), "%s")) - start
-                if (knowns < Sgenes) {
-                    tmp <- pifit(ures, sim, D, knowns = Sgenes2)
-                } else {
-                    tmp <- pifit(ures, sim, D)
-                }
-                par(mfrow=c(2,3))
-                result[i, j, k, 1, s] <- tmp$net
-                result[i, j, k, 2, s] <- tmp$known[1]
-                result[i, j, k, 3, s] <- tmp$known[2]
-                result[i, j, k, 4, s] <- tmp$cor
-                result[i, j, k, 6, s] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
-                if (!all(ures$lls[2:length(ures$lls)] - ures$lls[1:(length(ures$lls)-1)] >= 0)) { getfalse <- getfalse + 1 }
             }
+            if (knowns < Sgenes) {
+                tmp <- pifit(ures, sim, D, knowns = Sgenes2)
+            } else {
+                tmp <- pifit(ures, sim, D)
+            }
+            par(mfrow=c(2,3))
+            result[i, j, k, 1, s] <- tmp$net
+            result[i, j, k, 2, s] <- tmp$knownRates[1]
+            result[i, j, k, 3, s] <- tmp$knownRates[2]
+            result[i, j, k, 7, s] <- tmp$knownRates[3]
+            result[i, j, k, 8, s] <- tmp$knownRates[4]
+            result[i, j, k, 9, s] <- tmp$uknownRates[1]
+            result[i, j, k, 10, s] <- tmp$uknownRates[2]
+            result[i, j, k, 11, s] <- tmp$uknownRates[3]
+            result[i, j, k, 12, s] <- tmp$uknownRates[4]
+            result[i, j, k, 4, s] <- tmp$cor
+            result[i, j, k, 6, s] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
+            if (!all(ures$lls[2:length(ures$lls)] - ures$lls[1:(length(ures$lls)-1)] >= 0)) { getfalse <- getfalse + 1 }
             print("nempi")
 
             ## result[i, j, k, , s]
@@ -202,31 +234,22 @@ for (i in 1:runs) {
                     } else {
                         tmp <- pifit(ures, sim, D, propagate = 0)
                     }
-                    result[i, j, k, 1, s+2] <- tmp$net
-                    result[i, j, k, 2, s+2] <- tmp$known[1]
-                    result[i, j, k, 3, s+2] <- tmp$known[2]
-                    result[i, j, k, 4, s+2] <- tmp$cor
-                    result[i, j, k, 6, s+2] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
-
+                    s2 <- s/2+1
+                    result[i, j, k, 1, s2] <- tmp$net
+                    result[i, j, k, 2, s2] <- tmp$knownRates[1]
+                    result[i, j, k, 3, s2] <- tmp$knownRates[2]
+                    result[i, j, k, 7, s2] <- tmp$knownRates[3]
+                    result[i, j, k, 8, s2] <- tmp$knownRates[4]
+                    result[i, j, k, 9, s2] <- tmp$uknownRates[1]
+                    result[i, j, k, 10, s2] <- tmp$uknownRates[2]
+                    result[i, j, k, 11, s2] <- tmp$uknownRates[3]
+                    result[i, j, k, 12, s2] <- tmp$uknownRates[4]
+                    result[i, j, k, 4, s2] <- tmp$cor
+                    result[i, j, k, 6, s2] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
                     sum(apply(ures$Gamma, 2, max) < 1 - apply(ures$Gamma, 2, sum) & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
-
-
                 }
             }
             print("class")
-
-            ## empty:
-
-            D2 <- D[, which(colnames(D) != "")]
-            Rho <- getRho(D2)
-            tmp <- mynem(D2, Rho = Rho, multi = TRUE)
-            n <- Sgenes
-            A <- mytc(tmp$adj)
-            B <- mytc(sim$Nem[[1]])
-            if (knowns < Sgenes) {
-                B <- B[which(rownames(B) %in% Sgenes2), which(colnames(B) %in% Sgenes2)]
-            }
-            result[i, j, k, 1, 9] <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
 
             ## random:
 
@@ -245,60 +268,48 @@ for (i in 1:runs) {
             ures$res$adj <- tmp$adj
             ures$null <- TRUE
             ures$combi <- 1
-            result[i, j, k, 5, 10] <- as.numeric(format(Sys.time(), "%s")) - start
+            result[i, j, k, 5, 6] <- as.numeric(format(Sys.time(), "%s")) - start
             if (knowns < Sgenes) {
                 tmp <- pifit(ures, sim, D, propagate = 0, knowns = Sgenes2)
             } else {
                 tmp <- pifit(ures, sim, D, propagate = 0)
             }
-            result[i, j, k, 1, 10] <- tmp$net
-            result[i, j, k, 2, 10] <- tmp$known[1]
-            result[i, j, k, 3, 10] <- tmp$known[2]
-            result[i, j, k, 4, 10] <- tmp$cor
-            result[i, j, k, 6, 10] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
+            result[i, j, k, 1, 6] <- tmp$net
+            result[i, j, k, 2, 6] <- tmp$knownRates[1]
+            result[i, j, k, 3, 6] <- tmp$knownRates[2]
+            result[i, j, k, 7, 6] <- tmp$knownRates[3]
+            result[i, j, k, 8, 6] <- tmp$knownRates[4]
+            result[i, j, k, 9, 6] <- tmp$uknownRates[1]
+            result[i, j, k, 10, 6] <- tmp$uknownRates[2]
+            result[i, j, k, 11, 6] <- tmp$uknownRates[3]
+            result[i, j, k, 12, 6] <- tmp$uknownRates[4]
+            result[i, j, k, 4, 6] <- tmp$cor
+            result[i, j, k, 6, 6] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
 
-            ## missForest
+            if (docompete) {
+                ## empty:
 
-            start <- as.numeric(format(Sys.time(), "%s"))
-            mfdata <- cbind(as.data.frame(t(D)), colnames(D))
-            mfdata[which(mfdata == "", arr.ind = TRUE)] <- NA
-            sink("NUL")
-            mfimp <- missForest(mfdata)
-            sink()
-            D2 <- D
-            colnames(D2) <- mfimp$ximp[, ncol(mfimp$ximp)]
-            tmp <- mynem(D2, multi = TRUE)
-            Gamma <- getGamma(D2)
-            ures <- list()
-            ures$Gamma <- apply(Gamma, 2, function(x) return(x/sum(x)))
-            ures$res <- list()
-            ures$res$adj <- tmp$adj
-            ures$null <- TRUE
-            ures$combi <- 1
-            result[i, j, k, 5, 11] <- as.numeric(format(Sys.time(), "%s")) - start
-            if (knowns < Sgenes) {
-                tmp <- pifit(ures, sim, D, propagate = 0, knowns = Sgenes2)
-            } else {
-                tmp <- pifit(ures, sim, D, propagate = 0)
-            }
-            result[i, j, k, 1, 11] <- tmp$net
-            result[i, j, k, 2, 11] <- tmp$known[1]
-            result[i, j, k, 3, 11] <- tmp$known[2]
-            result[i, j, k, 4, 11] <- tmp$cor
-            result[i, j, k, 6, 11] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
-            print("missForest")
+                D2 <- D[, which(colnames(D) != "")]
+                Rho <- getRho(D2)
+                tmp <- mynem(D2, Rho = Rho, multi = TRUE)
+                n <- Sgenes
+                A <- mytc(tmp$adj)
+                B <- mytc(sim$Nem[[1]])
+                if (knowns < Sgenes) {
+                    B <- B[which(rownames(B) %in% Sgenes2), which(colnames(B) %in% Sgenes2)]
+                }
+                result[i, j, k, 1, 5] <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
 
-            ## mice:
+                ## missForest
 
-            if (Sgenes <= 100) {
                 start <- as.numeric(format(Sys.time(), "%s"))
-                micedata <- mfdata
-                colnames(micedata) <- paste0(LETTERS[1:ncol(micedata)], 1:ncol(micedata))
+                mfdata <- cbind(as.data.frame(t(D)), colnames(D))
+                mfdata[which(mfdata == "", arr.ind = TRUE)] <- NA
                 sink("NUL")
-                miceres <- mice(micedata, method = c(rep('', ncol(micedata)-1), 'rfcat'), m = 1, maxit = 1)
+                mfimp <- missForest(mfdata)
                 sink()
                 D2 <- D
-                colnames(D2)[which(colnames(D2) %in% "")] <- as.character(miceres$imp[[length(miceres$imp)]][, 1])
+                colnames(D2) <- mfimp$ximp[, ncol(mfimp$ximp)]
                 tmp <- mynem(D2, multi = TRUE)
                 Gamma <- getGamma(D2)
                 ures <- list()
@@ -307,51 +318,102 @@ for (i in 1:runs) {
                 ures$res$adj <- tmp$adj
                 ures$null <- TRUE
                 ures$combi <- 1
-                result[i, j, k, 5, 12] <- as.numeric(format(Sys.time(), "%s")) - start
+                result[i, j, k, 5, 7] <- as.numeric(format(Sys.time(), "%s")) - start
                 if (knowns < Sgenes) {
                     tmp <- pifit(ures, sim, D, propagate = 0, knowns = Sgenes2)
                 } else {
                     tmp <- pifit(ures, sim, D, propagate = 0)
                 }
-                result[i, j, k, 1, 12] <- tmp$net
-                result[i, j, k, 2, 12] <- tmp$known[1]
-                result[i, j, k, 3, 12] <- tmp$known[2]
-                result[i, j, k, 4, 12] <- tmp$cor
-                result[i, j, k, 6, 12] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
-                print("mice")
+                result[i, j, k, 1, 7] <- tmp$net
+                result[i, j, k, 2, 7] <- tmp$knownRates[1]
+                result[i, j, k, 3, 7] <- tmp$knownRates[2]
+                result[i, j, k, 7, 7] <- tmp$knownRates[3]
+                result[i, j, k, 8, 7] <- tmp$knownRates[4]
+                result[i, j, k, 9, 7] <- tmp$uknownRates[1]
+                result[i, j, k, 10, 7] <- tmp$uknownRates[2]
+                result[i, j, k, 11, 7] <- tmp$uknownRates[3]
+                result[i, j, k, 12, 7] <- tmp$uknownRates[4]
+                result[i, j, k, 4, 7] <- tmp$cor
+                result[i, j, k, 6, 7] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
+                print("missForest")
+
+                ## mice:
+
+                if (Sgenes <= 100) {
+                    start <- as.numeric(format(Sys.time(), "%s"))
+                    micedata <- mfdata
+                    colnames(micedata) <- paste0(LETTERS[1:ncol(micedata)], 1:ncol(micedata))
+                    sink("NUL")
+                    miceres <- mice(micedata, method = c(rep('', ncol(micedata)-1), 'rfcat'), m = 1, maxit = 1)
+                    sink()
+                    D2 <- D
+                    colnames(D2)[which(colnames(D2) %in% "")] <- as.character(miceres$imp[[length(miceres$imp)]][, 1])
+                    tmp <- mynem(D2, multi = TRUE)
+                    Gamma <- getGamma(D2)
+                    ures <- list()
+                    ures$Gamma <- apply(Gamma, 2, function(x) return(x/sum(x)))
+                    ures$res <- list()
+                    ures$res$adj <- tmp$adj
+                    ures$null <- TRUE
+                    ures$combi <- 1
+                    result[i, j, k, 5, 8] <- as.numeric(format(Sys.time(), "%s")) - start
+                    if (knowns < Sgenes) {
+                        tmp <- pifit(ures, sim, D, propagate = 0, knowns = Sgenes2)
+                    } else {
+                        tmp <- pifit(ures, sim, D, propagate = 0)
+                    }
+                    result[i, j, k, 1, 8] <- tmp$net
+                    result[i, j, k, 2, 8] <- tmp$knownRates[1]
+                    result[i, j, k, 3, 8] <- tmp$knownRates[2]
+                    result[i, j, k, 7, 8] <- tmp$knownRates[3]
+                    result[i, j, k, 8, 8] <- tmp$knownRates[4]
+                    result[i, j, k, 9, 8] <- tmp$uknownRates[1]
+                    result[i, j, k, 10, 8] <- tmp$uknownRates[2]
+                    result[i, j, k, 11, 8] <- tmp$uknownRates[3]
+                    result[i, j, k, 12, 8] <- tmp$uknownRates[4]
+                    result[i, j, k, 4, 8] <- tmp$cor
+                    result[i, j, k, 6, 8] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
+                    print("mice")
+                }
+
+                ## knn:
+
+                start <- as.numeric(format(Sys.time(), "%s"))
+                train <- t(D[, which(colnames(D) != "")])
+                test <- t(D[, which(colnames(D) == "")])
+                cl <- colnames(D)[which(colnames(D) != "")]
+                knnres <- knn(train, test, cl, prob=TRUE)
+                D2 <- D
+                colnames(D2)[which(colnames(D2) %in% "")] <- as.character(knnres)
+                tmp <- mynem(D2, multi = TRUE)
+                Gamma <- getGamma(D2)
+                ures <- list()
+                ures$Gamma <- apply(Gamma, 2, function(x) return(x/sum(x)))
+                ures$res <- list()
+                ures$res$adj <- tmp$adj
+                ures$null <- TRUE
+                ures$combi <- 1
+                result[i, j, k, 5, 9] <- as.numeric(format(Sys.time(), "%s")) - start
+                if (knowns < Sgenes) {
+                    tmp <- pifit(ures, sim, D, propagate = 0, knowns = Sgenes2)
+                } else {
+                    tmp <- pifit(ures, sim, D, propagate = 0)
+                }
+                result[i, j, k, 1, 9] <- tmp$net
+                result[i, j, k, 2, 9] <- tmp$knownRates[1]
+                result[i, j, k, 3, 9] <- tmp$knownRates[2]
+                result[i, j, k, 7, 9] <- tmp$knownRates[3]
+                result[i, j, k, 8, 9] <- tmp$knownRates[4]
+                result[i, j, k, 9, 9] <- tmp$uknownRates[1]
+                result[i, j, k, 10, 9] <- tmp$uknownRates[2]
+                result[i, j, k, 11, 9] <- tmp$uknownRates[3]
+                result[i, j, k, 12, 9] <- tmp$uknownRates[4]
+                result[i, j, k, 4, 9] <- tmp$cor
+                result[i, j, k, 6, 9] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
+                print("knn")
             }
 
-            ## knn:
-
-            start <- as.numeric(format(Sys.time(), "%s"))
-            train <- t(D[, which(colnames(D) != "")])
-            test <- t(D[, which(colnames(D) == "")])
-            cl <- colnames(D)[which(colnames(D) != "")]
-            knnres <- knn(train, test, cl, prob=TRUE)
-            D2 <- D
-            colnames(D2)[which(colnames(D2) %in% "")] <- as.character(knnres)
-            tmp <- mynem(D2, multi = TRUE)
-            Gamma <- getGamma(D2)
-            ures <- list()
-            ures$Gamma <- apply(Gamma, 2, function(x) return(x/sum(x)))
-            ures$res <- list()
-            ures$res$adj <- tmp$adj
-            ures$null <- TRUE
-            ures$combi <- 1
-            result[i, j, k, 5, 13] <- as.numeric(format(Sys.time(), "%s")) - start
-            if (knowns < Sgenes) {
-                tmp <- pifit(ures, sim, D, propagate = 0, knowns = Sgenes2)
-            } else {
-                tmp <- pifit(ures, sim, D, propagate = 0)
-            }
-            result[i, j, k, 1, 13] <- tmp$net
-            result[i, j, k, 2, 13] <- tmp$known[1]
-            result[i, j, k, 3, 13] <- tmp$known[2]
-            result[i, j, k, 4, 13] <- tmp$cor
-            result[i, j, k, 6, 13] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
-            print("knn")
-
-            ## result[i, j, k, , c((1:4)*2, 11,12,13,10)]
+            ## result[i, j, k, ,]
 
         }
     }
@@ -360,22 +422,22 @@ for (i in 1:runs) {
 
 if (is.na(runs2)) {
     if (wrong) {
-        save(result, getfalse, lost, file = paste("unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+        save(result, getfalse, lost, file = paste("unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
     } else {
         if (knowns < Sgenes) {
-            save(result, getfalse, lost, file = paste("unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+            save(result, getfalse, lost, file = paste("unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
         } else {
-            save(result, getfalse, lost, file = paste("unem_missing", highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+            save(result, getfalse, lost, file = paste("unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
         }
     }
 } else {
     if (wrong) {
-        save(result, getfalse, lost, file = paste("nempi/unem_misslabeled", runs2, highnoise, complete, noise2, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+        save(result, getfalse, lost, file = paste("nempi/unem_misslabeled", runs2, highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
     } else {
         if (knowns < Sgenes) {
-            save(result, getfalse, lost, file = paste("nempi/unem_missing_unknowns", runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+            save(result, getfalse, lost, file = paste("nempi/unem_missing_unknowns", runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
         } else {
-            save(result, getfalse, lost, file = paste("nempi/unem_missing", runs2, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+            save(result, getfalse, lost, file = paste("nempi/unem_missing", runs2, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
         }
     }
 }
@@ -399,18 +461,10 @@ plotConvergence.nempi(ures, type = "b", col = "red")
 system("scp nempi/other/nempi_app.r euler.ethz.ch:")
 system("scp nempi/R/nempi_main.r euler.ethz.ch:")
 system("scp nempi/R/nempi_low.r euler.ethz.ch:")
+system("scp mnem/R/mnems_low.r euler.ethz.ch:")
+system("scp mnem/R/mnems.r euler.ethz.ch:")
 
 Sgenes <- 5; wrong <- 1; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
-
-Sgenes <- 5; wrong <- 0; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
-
-Sgenes <- 10; wrong <- 1; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
-
-Sgenes <- 10; wrong <- 0; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
-
-Sgenes <- 20; wrong <- 1; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
-
-Sgenes <- 20; wrong <- 0; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
 
 ## ## on leo/euler:
 
@@ -440,19 +494,19 @@ rm error.txt
 rm output.txt
 rm .RData
 
-nCells=500
+nCells=NA
 
 bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
 bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
 ## new with unknowns
 
@@ -472,52 +526,68 @@ rm error.txt
 rm output.txt
 rm .RData
 
+nCells=NA
+
 bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '100' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
 
-## parallel:
+## new with perturbed net
 
-ram=30000
-queue=4h
-Sgenes=200
+ram=10000
 
 rm error.txt
 rm output.txt
 rm .RData
 
-bsub -M ${ram} -q normal.${queue} -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Sgenes}' '0' '1' '1' '8' '1' < nempi_app.r"
+nCells=NA
 
-for i in {2..100}; do
-        bsub -M ${ram} -q normal.${queue} -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Sgenes}' '0' '1' '1' '8' '${i}' < nempi_app.r"
-done
+perturb=1
 
-## load results:
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' ${perturb} < nempi_app.r"
 
-## combine parallel:
+## parallel:
 
-path <- "~/Mount/Euler/nempi/"
+## ram=30000
+## queue=4h
+## Sgenes=200
 
-Sgenes <- 200
-highnoise <- 1
-complete <- 1
-Egenes <- 10
-nCells <- 1000 # Sgenes*10*2
-multi <- c(0.2, 0.1)
-noise2 <- 0.5
-runs <- 100
+## rm error.txt
+## rm output.txt
+## rm .RData
 
-knowns <- 8
+## bsub -M ${ram} -q normal.${queue} -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Sgenes}' '0' '1' '1' '8' '1' < nempi_app.r"
 
-for (runs2 in 1:runs) {
-    if (!file.exists(paste(paste0(path, "unem_missing_unknowns"), runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))) { cat(runs2); next() }
-    load(paste(paste0(path, "unem_missing_unknowns"), runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
-    if (runs2 == 1) {
-        result2 <- result
-    }
-    result2[runs2,,,,] <- result[runs2,,,,]
-}
-result <- result2
+## for i in {2..100}; do
+##         bsub -M ${ram} -q normal.${queue} -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Sgenes}' '0' '1' '1' '8' '${i}' < nempi_app.r"
+## done
 
-result[which(is.na(result) == TRUE)] <- 0
+## ## load results:
+
+## ## combine parallel:
+
+## path <- "~/Mount/Euler/nempi/"
+
+## Sgenes <- 200
+## highnoise <- 1
+## complete <- 1
+## Egenes <- 10
+## nCells <- 1000 # Sgenes*10*2
+## multi <- c(0.2, 0.1)
+## noise2 <- 0.5
+## runs <- 100
+
+## knowns <- 8
+
+## for (runs2 in 1:runs) {
+##     if (!file.exists(paste(paste0(path, "unem_missing_unknowns"), runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))) { cat(runs2); next() }
+##     load(paste(paste0(path, "unem_missing_unknowns"), runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+##     if (runs2 == 1) {
+##         result2 <- result
+##     }
+##     result2[runs2,,,,] <- result[runs2,,,,]
+## }
+## result <- result2
+
+## result[which(is.na(result) == TRUE)] <- 0
 
 ## save(result, lost, file = paste("unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
 
@@ -544,8 +614,8 @@ paras <- expand.grid(c(0,1), c(0,1), c(0,1))
 box <- 1
 scatter <- ""#"random"
 dens <- 0
-show <- c((1:4)*2, 11, 12, 13, 10)
-show2 <- c(3,7) # 3
+show <- 1:9
+show2 <- c(1,2,3)
 if (wrong) {
     width0 <- length(lost)*(10/3)
     height0 <- 3*length(show2)
@@ -563,44 +633,37 @@ for (k in 1:length(lost)) {
     cols <- rgb(c(1,0,0,0.5),c(0,1,0,0.5),c(0,0,1,0.5), 0.75)
     cols <- rep(cols[1:length(show)], 3)
     if (1 %in% show2) {
-        myboxplot(cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "known prediction", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (6 %in% show2) {
-        myboxplot((cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show])+cbind(result[,1,k,3,show], result[,2,k,3,show], result[,3,k,3,show]))/2,
-                  col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "balanced accuracy", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (2 %in% show2) {
-        myboxplot(cbind(result[,1,k,3,show], result[,2,k,3,show], result[,3,k,3,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "unknown prediction", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (3 %in% show2) {
         myboxplot(cbind(result[,1,k,4,show], result[,2,k,4,show], result[,3,k,4,show]), col = cols, ylim = c(ymin2,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "perturbation profile correlation", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
         mnem:::addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
     }
-    if (4 %in% show2) {
+    if (2 %in% show2) {
+        myboxplot(cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show])/(cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show])+cbind(result[,1,k,3,show], result[,2,k,3,show], result[,3,k,3,show])), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "PPV knowns", box = box, scatter = scatter, dens = dens, xaxt = "n")
+        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
+        abline(v=c(length(show)*(1:2)+0.5), col = 1)
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+    }
+    if (3 %in% show2) {
+        myboxplot(cbind(result[,1,k,9,show], result[,2,k,9,show], result[,3,k,9,show])/(cbind(result[,1,k,9,show], result[,2,k,9,show], result[,3,k,9,show])+cbind(result[,1,k,10,show], result[,2,k,10,show], result[,3,k,10,show])), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "PPV unknowns", box = box, scatter = scatter, dens = dens, xaxt = "n")
+        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
+        abline(v=c(length(show)*(1:2)+0.5), col = 1)
+        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
+    }
+    if (6 %in% show2) {
         myboxplot(cbind(result[,1,k,1,show], result[,2,k,1,show], result[,3,k,1,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "network accuracy", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
         mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
-    if (5 %in% show2) {
+    if (7 %in% show2) {
         ymax <- max(cbind(result[,1,k,5,show], result[,2,k,5,show], result[,3,k,5,show]))
         myboxplot(cbind(result[,1,k,5,show], result[,2,k,5,show], result[,3,k,5,show]), ylim = c(0, ymax), col = cols, main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "seconds", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
         abline(v=c(length(show)*(1:2)+0.5), col = 1)
         mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
     }
-    if (7 %in% show2) {
+    if (8 %in% show2) {
         ymax <- max(cbind(result[,1,k,6,show], result[,2,k,6,show], result[,3,k,6,show]))
         myboxplot(cbind(result[,1,k,6,show], result[,2,k,6,show], result[,3,k,6,show]), ylim = c(0, ymax), col = cols, main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "ratio of null samples to uninformative samples", box = box, scatter = scatter, dens = dens, xaxt = "n")
         axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
@@ -823,10 +886,36 @@ Rho2[which(Rho2 > 1)] <- 1
 epiNEM::HeatmapOP(Rho2, clusterx = Rho, col = "RdBu", Rowv = FALSE, aspect = "iso", colorkey = NULL, cexCol = 2, cexRow = 2)
 dev.off()
 
+## check data distribution:
 
+path <- "mutclust/"
+type <- "TCGA-BRCA"
+load(paste0(path, type, "_nempi.rda"))
 
+Sgenes <- 10; Egenes <- 100; nCells <- 200; multi = c(0.2, 0.1); badCells <- 0.1
+sim <- simData(Sgenes = Sgenes, Egenes = Egenes, mw = 1, nCells = nCells, Nem = 1, multi = multi, badCells = floor(nCells*badCells))
+if (!all(1:Sgenes %in% unique(unlist(strsplit(colnames(sim$data), "_"))))) {
+    kdata <- t(sim$Nem[[1]])
+    kdata <- kdata[rep(1:nrow(kdata), each = Egenes), , drop = FALSE]
+    sim$data <- cbind(sim$data[, -(1:ncol(kdata))], kdata)
+}
 
-
+pdf("nempi_data_dist.pdf", width = 16, height = 4)
+par(mfrow=c(1,4))
+sdata <- sim$data
+sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 1)
+sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 1)
+hist(sdata, main = expression(sigma ~ "= 1"))
+sdata <- sim$data
+sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 2)
+sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 2)
+hist(sdata, main = expression(sigma ~ "= 2"))
+sdata <- sim$data
+sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 3)
+sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 3)
+hist(sdata, main = expression(sigma ~ "= 3"))
+hist(D2, main = "TCGA breast cancer")
+dev.off()
 
 
 
