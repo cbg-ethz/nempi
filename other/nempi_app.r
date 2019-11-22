@@ -539,52 +539,7 @@ perturb=0.5
 
 bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' ${perturb} < nempi_app.r"
 
-## parallel:
-
-## ram=30000
-## queue=4h
-## Sgenes=200
-
-## rm error.txt
-## rm output.txt
-## rm .RData
-
-## bsub -M ${ram} -q normal.${queue} -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Sgenes}' '0' '1' '1' '8' '1' < nempi_app.r"
-
-## for i in {2..100}; do
-##         bsub -M ${ram} -q normal.${queue} -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Sgenes}' '0' '1' '1' '8' '${i}' < nempi_app.r"
-## done
-
 ## ## load results:
-
-## ## combine parallel:
-
-## path <- "~/Mount/Euler/nempi/"
-
-## Sgenes <- 200
-## highnoise <- 1
-## complete <- 1
-## Egenes <- 10
-## nCells <- 1000 # Sgenes*10*2
-## multi <- c(0.2, 0.1)
-## noise2 <- 0.5
-## runs <- 100
-
-## knowns <- 8
-
-## for (runs2 in 1:runs) {
-##     if (!file.exists(paste(paste0(path, "unem_missing_unknowns"), runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))) { cat(runs2); next() }
-##     load(paste(paste0(path, "unem_missing_unknowns"), runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
-##     if (runs2 == 1) {
-##         result2 <- result
-##     }
-##     result2[runs2,,,,] <- result[runs2,,,,]
-## }
-## result <- result2
-
-## result[which(is.na(result) == TRUE)] <- 0
-
-## save(result, lost, file = paste("unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
 
 ## normal pipeline:
 
@@ -594,143 +549,65 @@ complete <- 1
 Egenes <- 10
 nCells <- Sgenes*10*2
 multi <- c(0.2, 0.1)
-perturb <- 0
+perturb <- 0.5
+wrong <- 0
 
 ## Documents/nempi/old2/
 
-noise2 <- 0.5
-load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
-
-## load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+if (wrong) {
+    noise2 <- 0.5
+    load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+} else {
+    load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+}
 
 result[which(is.na(result) == TRUE)] <- 0
 
-wrong <- 0
-paras <- expand.grid(c(0,1), c(0,1), c(0,1))
-box <- 1
-scatter <- ""#"random"
-dens <- 0
-show <- c(1,2,3,4,7,8,9,6)
-show2 <- c(1,2,3)
-if (wrong) {
-    width0 <- length(lost)*(10/3)
-    height0 <- 3*length(show2)
-    main <- "miss-labeled"
+## figure plots:
+
+wrong <- 0; knowns <- 1000 # 8, 1000
+show2 <- 1 # 1,4,6
+shownoise <- c(1,2,3); showleg <- 0; perturb <- 0
+if (knowns > 8) {
+    if (perturb == 0) {
+        doSgenes <- c(5,10,15)
+    } else {
+        doSgenes <- 10
+    }
 } else {
-    width0 <- length(lost)*(10/3)
-    height0 <- 3*length(show2)
-    main <- "missing"
+    doSgenes <- 50 # c(50,100)
+    lost <- c(0.1, 0.9)
 }
-ymin <- 0.5
-ymin2 <- 0
-pdf("temp.pdf", width = width0, height = height0)
-par(mfcol=c(length(show2), length(lost)))
-for (k in 1:length(lost)) {
-    cols <- rgb(c(1,0,0,0.5),c(0,1,0,0.5),c(0,0,1,0.5), 0.75)
-    cols <- rep(cols[1:length(show)], 3)
-    if (1 %in% show2) {
-        myboxplot(cbind(result[,1,k,4,show], result[,2,k,4,show], result[,3,k,4,show]), col = cols, ylim = c(ymin2,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "perturbation profile correlation", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
-    }
-    if (2 %in% show2) {
-        myboxplot(cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show])/(cbind(result[,1,k,2,show], result[,2,k,2,show], result[,3,k,2,show])+cbind(result[,1,k,3,show], result[,2,k,3,show], result[,3,k,3,show])), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "PPV knowns", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (3 %in% show2) {
-        myboxplot(cbind(result[,1,k,9,show], result[,2,k,9,show], result[,3,k,9,show])/(cbind(result[,1,k,9,show], result[,2,k,9,show], result[,3,k,9,show])+cbind(result[,1,k,10,show], result[,2,k,10,show], result[,3,k,10,show])), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "PPV unknowns", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (6 %in% show2) {
-        myboxplot(cbind(result[,1,k,1,show], result[,2,k,1,show], result[,3,k,1,show]), col = cols, ylim = c(ymin,1), main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "network accuracy", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (7 %in% show2) {
-        ymax <- max(cbind(result[,1,k,5,show], result[,2,k,5,show], result[,3,k,5,show]))
-        myboxplot(cbind(result[,1,k,5,show], result[,2,k,5,show], result[,3,k,5,show]), ylim = c(0, ymax), col = cols, main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "seconds", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-    if (8 %in% show2) {
-        ymax <- max(cbind(result[,1,k,6,show], result[,2,k,6,show], result[,3,k,6,show]))
-        myboxplot(cbind(result[,1,k,6,show], result[,2,k,6,show], result[,3,k,6,show]), ylim = c(0, ymax), col = cols, main = paste0(main, ": ", lost[k]), xlab = expression(sigma), ylab = "ratio of null samples to uninformative samples", box = box, scatter = scatter, dens = dens, xaxt = "n")
-        axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show)), c(1,3,5))
-        abline(v=c(length(show)*(1:2)+0.5), col = 1)
-        mnem:::addgrid(x=c(0,1,0.2), y=c(0,length(show)*3+1,1))
-    }
-}
-dev.off()
-
-## several Sgenes in one plot:
-
-wrong <-  0 # 0,1
-knowns <- 8 # 8, 1000
-show2 <- 2 # 1,4,6
-shownoise <- c(1,2,3)
-
-highnoise <- 1
-complete <- 1
-Egenes <- 10
-multi <- c(0.2, 0.1)
-noise2 <- 0.5
+highnoise <- 1; complete <- 1; Egenes <- 10; multi <- c(0.2, 0.1); noise2 <- 0.5
 if (wrong) {
     lost <- c(0.1, 0.5)
 } else {
     lost <- c(0.1, 0.5, 0.9)
 }
-if (knowns > 8) {
-    doSgenes <- c(5,10,15)#,20)
-} else {
-    doSgenes <- c(50,100)#,200)
-    lost <- c(0.1, 0.9)
-}
-
 if (show2 != 1) {
     show <- c(1:4, 7:9, 6)
 } else {
     show <- 2
 }
-cols <- c("red", "blue", "darkgreen", "brown", "orange", "pink", "turquoise", "grey")
-cols <- rep(cols[1:length(show)], 3)
-
+cols <- c("red", "blue", "darkgreen", "brown", "orange", "pink", "turquoise", "grey"); cols <- rep(cols[1:length(show)], 3)
 if (wrong | knowns == 8) {
-    parcols <- 2
-    height0 <- 5.5
-    lost2 <- lost[1:2]
-    leg <- 0
+    parcols <- 2; height0 <- 5.5; lost2 <- lost[1:2]; leg <- 0
 } else {
-    parcols <- 3
-    height0 <- 8
-    lost2 <- lost
-    leg <- 2
+    parcols <- 3; height0 <- 8; lost2 <- lost; leg <- 2
 }
-paras <- expand.grid(c(0,1), c(0,1), c(0,1))
-box <- 1
-scatter <- ""#"random"
-dens <- 0
-ymin <- 0.5
-ymin2 <- 0
-
+paras <- expand.grid(c(0,1), c(0,1), c(0,1)); box <- 1; scatter <- ""; dens <- 0; ymin <- 0.5; ymin2 <- 0
 if (6 %in% show2 | knowns == 1000) {
-    if (4 == show2) {
+    if (4 == show2 & perturb == 0) {
         pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2), width = height0)
     } else {
-        pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2)-2.5*(1-wrong), width = height0)
+        pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2)-2.5*(1-wrong)*0.75, width = height0)
     }
 } else {
     a <- (5/4)
     pdf("temp.pdf", height = (((8/3)*length(doSgenes)+leg)*length(show2))*a, width = height0*a)
 }
 if (wrong == 0 & knowns == 1000) {
-    if (show2 == 4) {
+    if (show2 == 4 & perturb == 0) {
         par(mfrow=c((length(doSgenes)+1)*length(show2), parcols))
     } else {
         par(mfrow=c((length(doSgenes)+1)*length(show2)-1, parcols))
@@ -744,18 +621,18 @@ for (Sgenes in doSgenes) {
             if (knowns == 1000) {
                 nCells <- Sgenes*10*2
             } else {
-                nCells <- 1000
+                nCells <- 100 # 1000
             }
             if (wrong) {
                 noise2 <- 0.5
                 main <- paste0(Sgenes, " P-genes, incorrect")
-                load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+                load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
             } else {
                 main <- paste0(Sgenes, " P-genes, unobserved")
                 if (knowns < Sgenes) {
-                    load(paste("~/Documents/unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+                    load(paste("~/Documents/unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
                 } else {
-                    load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+                    load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
                 }
             }
             if (s == 4) {
@@ -766,23 +643,37 @@ for (Sgenes in doSgenes) {
                 ylab <- "fraction of identified null samples"
             }
             ylim <- c(ymin2,1)
-            if (dimnames(result)[[4]][s] == "time") {
-                ylim <- NULL
-            }
-            if (dimnames(result)[[4]][s] != "cor") {
-                ylab <- dimnames(result)[[4]][s]
+            if (s < dim(result)[4]) {
+                if (dimnames(result)[[4]][s] == "time") {
+                    ylim <- NULL
+                }
+                if (dimnames(result)[[4]][s] != "cor") {
+                    ylab <- dimnames(result)[[4]][s]
+                }
+            } else {
+                if (s %in% c(13,15,17)) { ylab = "PPV" }
+                if (s %in% c(14,16,18)) { ylab <- "NPV" }
             }
             main <- paste0(main, ": ", lost[k])
             if (knowns < Sgenes) { main <- paste0(main, "\n unknowns: ", Sgenes-knowns) }
             databox <- NULL
             for (i in shownoise) {
-                if (s == 2) {
-                    databox <- cbind(databox, (result[,i,k,s,show] + result[,i,k,s+1,show])/2)
+                if (s == 13) {
+                    TP <- (result[,i,k,2,show] + result[,i,k,9,show]); FP <- (result[,i,k,3,show] + result[,i,k,10,show]); databox <- cbind(databox, TP/(TP+FP))
+                } else if (s == 14) {
+                    TN <- (result[,i,k,7,show] + result[,i,k,11,show]); FN <- (result[,i,k,8,show] + result[,i,k,12,show]); databox <- cbind(databox, TN/(TN+FN))
+                } else if (s == 15) {
+                    TP <- result[,i,k,2,show]; FP <- result[,i,k,3,show]; databox <- cbind(databox, TP/(TP+FP))
+                } else if (s == 16) {
+                    TN <- result[,i,k,9,show]; FN <- result[,i,k,10,show]; databox <- cbind(databox, TN/(TN+FN))
+                } else if (s == 17) {
+                    TP <- result[,i,k,7,show]; FP <- result[,i,k,8,show]; databox <- cbind(databox, TP/(TP+FP))
+                } else if (s == 18) {
+                    TN <- result[,i,k,11,show]; FN <- result[,i,k,12,show]; databox <- cbind(databox, TN/(TN+FN))
                 } else {
                     databox <- cbind(databox, result[,i,k,s,show])
                 }
             }
-            ## databox <- cbind(result[,1,k,show2,show], result[,2,k,show2,show], result[,3,k,4,show])
             mnem:::myboxplot(databox, col = cols, ylim = ylim, main = main, xlab = expression(sigma), ylab = ylab, box = box, scatter = scatter, dens = dens, xaxt = "n", border = cols, #notch = 1,
                       medcol = "black")
             axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show))[1:length(shownoise)], c(1,3,5)[shownoise])
@@ -791,9 +682,8 @@ for (Sgenes in doSgenes) {
         }
     }
 }
-if (wrong == 0 & knowns >= Sgenes & show2 == 4) {
+if (wrong == 0 & knowns >= Sgenes & show2 == 4 & showleg) {
     hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n")
-    ## legend(0,1, c(expression(NEM~pi), "svm", "neural net", "random forest", "missForest", "random"), c("red", "blue", "darkgreen", "brown", "grey", "white"), box.col = "transparent", cex = 1, ncol = 3)
     legend(0,1, c(expression(NEM~pi), "svm", "neural net"), c("red", "blue", "darkgreen"), box.col = "transparent", cex = 1.5, ncol = 1)
     hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n")
     legend(0,1, c("random forest", "missForest", "mice"), c("brown", "orange", "pink"), box.col = "transparent", cex = 1.5, ncol = 1)
