@@ -71,6 +71,7 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
         Gamma <- Gamma[which(rownames(Gamma) %in% knowns), ]
     }
     net <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+    subtopo <- sum(x$res$subtopo == y$theta[[1]])/length(y$theta[[1]])
     tp <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 1 &
               Gamma[, which(colnames(x$Gamma) != unknown)] == 1)
     fp <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 1 &
@@ -101,7 +102,8 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     }
     known <- c(known, known2)
     names(known) <- c("known", "unknown")
-    return(list(net = net, known = known, cor = corres, knownRates = rates1, uknownRates = rates2))
+    return(list(net = net, subtopo = subtopo, known = known, cor = corres,
+                knownRates = rates1, uknownRates = rates2))
 }
 #' @noRd
 #' @importFrom utils combn
