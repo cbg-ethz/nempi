@@ -521,9 +521,9 @@ rm error.txt
 rm output.txt
 rm .RData
 
-nCells=100
+nCells=500
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '50' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '50' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
 
 ram=10000
 
@@ -549,34 +549,94 @@ perturb=-0.5
 
 bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' ${perturb} < nempi_app.r"
 
+## paralellize (esp. unknowns):
+
+ram=10000
+
+rm error.txt
+rm output.txt
+rm .RData
+
+nCells=1000
+Pgenes=100
+
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '1' '${nCells}' < nempi_app.r"
+
+for i in {}; do
+    bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '${i}' '${nCells}' < nempi_app.r"
+done
+
+## missing runs:
+
+knowns <- 8
+highnoise <- complete <- 1
+Sgenes <- 100
+Egenes <- 10
+nCells <- 1000
+perturb <- 0
+multi <- c(0.2,0.1)
+
+for (i in 1:100) {
+    filename <- paste("nempi/unem_missing_unknowns", i, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")
+    if (!file.exists(filename)) {
+       system(paste0("bsub -M 10000 -q normal.4h -n 1 -e error.txt -o output.txt -R \"rusage[mem=10000]\" \"R/bin/R --silent --no-save --args '100' '0' '1' '1' '8' '", i, "' '1000' < nempi_app.r\""))
+    }
+}
+
+## combine parallel:
+
+knowns <- 8
+highnoise <- complete <- 1
+Sgenes <- 100
+Egenes <- 10
+nCells <- 1000
+perturb <- 0
+multi <- c(0.2,0.1)
+
+for (i in 1:100) {
+    filename <- paste("~/Mount/Euler/nempi/unem_missing_unknowns", i, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")
+    if (file.exists(filename)) {
+        load(filename)
+        if (i == 1) {
+            result2 <- result
+        } else {
+            result2[i,,,,] <- result[i,,,,]
+        }
+        cat(paste0(i, "."))
+    }
+}
+result <- result2
+save(result, file = paste("~/Mount/Euler/unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+
 ## ## load results:
 
 ## normal pipeline:
 
-Sgenes <- 5
-highnoise <- 1
-complete <- 1
-Egenes <- 10
-nCells <- Sgenes*10*2
-multi <- c(0.2, 0.1)
-perturb <- 0
-wrong <- 0
+## Sgenes <- 5
+## highnoise <- 1
+## complete <- 1
+## Egenes <- 10
+## nCells <- Sgenes*10*2
+## multi <- c(0.2, 0.1)
+## perturb <- 0
+## wrong <- 0
 
-## Documents/nempi/old2/
+## ## Documents/nempi/old2/
 
-if (wrong) {
-    noise2 <- 0.5
-    load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
-} else {
-    load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
-}
+## if (wrong) {
+##     noise2 <- 0.5
+##     load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+## } else {
+##     load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+## }
 
-result[which(is.na(result) == TRUE)] <- 0
+## result[which(is.na(result) == TRUE)] <- 0
 
 ## figure plots:
 
-wrong <- 0; knowns <- 1000 # 8, 1000
-show2 <- 102 # 1,4,6,13
+statCells <- 1
+wrong <- 0; knowns <- 8 # 8 | > 15
+show2 <- 4 # 1,4,6,13
 shownoise <- c(1,2,3); showleg <- 1; perturb <- 0
 if (knowns > 8) {
     if (perturb == 0) {
@@ -606,7 +666,7 @@ if (wrong | knowns == 8) {
     parcols <- 3; height0 <- 8; lost2 <- lost; leg <- 2
 }
 paras <- expand.grid(c(0,1), c(0,1), c(0,1)); box <- 1; scatter <- ""; dens <- 0; ymin <- 0.5; ymin2 <- 0
-if (6 %in% show2 | knowns == 1000) {
+if (6 %in% show2 | knowns > 15) {
     if (4 == show2 & perturb == 0) {
         pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2), width = height0)
     } else {
@@ -616,7 +676,7 @@ if (6 %in% show2 | knowns == 1000) {
     a <- (5/4)
     pdf("temp.pdf", height = (((8/3)*length(doSgenes)+leg)*length(show2))*a, width = height0*a)
 }
-if (wrong == 0 & knowns == 1000) {
+if (wrong == 0 & knowns > 15) {
     if (show2 == 4 & perturb == 0) {
         par(mfrow=c((length(doSgenes)+1)*length(show2), parcols))
     } else {
@@ -628,10 +688,12 @@ if (wrong == 0 & knowns == 1000) {
 for (Sgenes in doSgenes) {
     for (k in 1:length(lost2)) {
         for (s in show2) {
-            if (knowns == 1000) {
-                nCells <- Sgenes*10*2
-            } else {
-                nCells <- 1000
+            if (!statCells) {
+                if (knowns > 15) {
+                    nCells <- Sgenes*10*2
+                } else {
+                    nCells <- 1000
+                }
             }
             if (wrong) {
                 noise2 <- 0.5
