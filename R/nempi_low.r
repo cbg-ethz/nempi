@@ -1,4 +1,10 @@
 #' @noRd
+auc <- function(a,b) {
+    n <- length(a)
+    c <- sum((a-c(0,a[-n]))*(b+c(0,b[-n]))/c(1,rep(2,n-1)))
+    return(c)
+}
+#' @noRd
 #' @import mnem
 getSgenes <- mnem:::getSgenes
 #' @noRd
@@ -57,6 +63,7 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
         Gammasoft <- Gammasoft[which(rownames(Gammasoft) %in% knowns), ]
     }
     corres <- cor(as.vector(x$Gamma), as.vector(Gammasoft))
+    gamsave <- x$Gamma
     x$Gamma <- apply(x$Gamma, 2, function(x) {
         y <- x*0
         y[which(x > 1/nrow(Gamma))] <- 1
@@ -102,8 +109,32 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     }
     known <- c(known, known2)
     names(known) <- c("known", "unknown")
+    ## put in prec-recall AUC?:
+    auc <- 0
+    ppv <- rec <- NULL
+    for (cut in seq(1,0, length.out = 100)) {
+        gamtmp <- apply(gamsave, 2, function(x) {
+            y <- x*0
+            y[which(x > cut)] <- 1
+            return(y)
+        })
+        tp <- sum(gamtmp == 1 & Gamma == 1)
+        fp <- sum(gamtmp == 1 & Gamma == 0)
+        tn <- sum(gamtmp == 0 & Gamma == 0)
+        fn <- sum(gamtmp == 0 & Gamma == 1)
+        ppvtmp <-  tp/(tp+fp)
+        if (is.na(ppvtmp)) { ppvtmp <- 0.5 }
+        rectmp <- tp/(tp+fn)
+        if (length(ppv) > 0) {
+            auc <- auc + (rectmp-rec[length(rec)])*(ppvtmp+ppv[length(ppv)])/2
+        } else {
+            auc <- auc + rectmp*ppvtmp
+        }
+        ppv <- c(ppv, ppvtmp)
+        rec <- c(rec, rectmp)
+    }
     return(list(net = net, subtopo = subtopo, known = known, cor = corres,
-                knownRates = rates1, uknownRates = rates2))
+                knownRates = rates1, uknownRates = rates2, auc = auc))
 }
 #' @noRd
 #' @importFrom utils combn

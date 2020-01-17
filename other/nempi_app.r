@@ -1,4 +1,4 @@
-## Sgenes <- 50; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 8; runs2 <- NA; nCells <- 100; perturb <- NA
+## Sgenes <- 5; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 1000; runs2 <- NA; nCells <- NA; perturb <- NA
 
 library(naturalsort)
 library(nem)
@@ -61,7 +61,7 @@ if (wrong) { lost <- lost[1:2] }
 
 if (knowns < Sgenes) { lost <- lost[c(1,3)] }
 
-result <- array(0, c(runs, length(noises), length(lost), 13, 9), list(rep("runs", runs), noises, lost, c("net", "tp", "fp", "cor", "time", "nullsamples", "tn", "fn", "tp2", "fp2", "tn2", "fn2", "theta"), c("nempi", "svm", "nnet", "rf", "empty", "random", "missForest", "mice", "knn")))
+result <- array(0, c(runs, length(noises), length(lost), 14, 9), list(rep("runs", runs), noises, lost, c("net", "tp", "fp", "cor", "time", "nullsamples", "tn", "fn", "tp2", "fp2", "tn2", "fn2", "theta", "auc"), c("nempi", "svm", "nnet", "rf", "empty", "random", "missForest", "mice", "knn")))
 
 getfalse <- 0
 
@@ -77,7 +77,7 @@ for (i in 1:runs) {
 
         for (k in 1:length(lost)) {
 
-            ## i <- j <- 1; k <- 2
+            ## i <- j <- 1; k <- 1
 
             if (knowns < Sgenes) {
                 Sgenes2 <- sort(sample(Sgenes, knowns))
@@ -206,6 +206,7 @@ for (i in 1:runs) {
             result[i, j, k, 11, s] <- tmp$uknownRates[3]
             result[i, j, k, 12, s] <- tmp$uknownRates[4]
             result[i, j, k, 13, s] <- tmp$subtopo
+            result[i, j, k, 14, s] <- tmp$auc
             result[i, j, k, 4, s] <- tmp$cor
             result[i, j, k, 6, s] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
             if (!all(ures$lls[2:length(ures$lls)] - ures$lls[1:(length(ures$lls)-1)] >= 0)) { getfalse <- getfalse + 1 }
@@ -246,6 +247,7 @@ for (i in 1:runs) {
                     result[i, j, k, 11, s2] <- tmp$uknownRates[3]
                     result[i, j, k, 12, s2] <- tmp$uknownRates[4]
                     result[i, j, k, 13, s2] <- tmp$subtopo
+                    result[i, j, k, 14, s2] <- tmp$auc
                     result[i, j, k, 4, s2] <- tmp$cor
                     result[i, j, k, 6, s2] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
                     sum(apply(ures$Gamma, 2, max) < 1 - apply(ures$Gamma, 2, sum) & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
@@ -285,6 +287,7 @@ for (i in 1:runs) {
             result[i, j, k, 11, 6] <- tmp$uknownRates[3]
             result[i, j, k, 12, 6] <- tmp$uknownRates[4]
             result[i, j, k, 13, 6] <- tmp$subtopo
+            result[i, j, k, 14, 6] <- tmp$auc
             result[i, j, k, 4, 6] <- tmp$cor
             result[i, j, k, 6, 6] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
 
@@ -336,6 +339,7 @@ for (i in 1:runs) {
                 result[i, j, k, 11, 7] <- tmp$uknownRates[3]
                 result[i, j, k, 12, 7] <- tmp$uknownRates[4]
                 result[i, j, k, 13, 7] <- tmp$subtopo
+                result[i, j, k, 14, 7] <- tmp$auc
                 result[i, j, k, 4, 7] <- tmp$cor
                 result[i, j, k, 6, 7] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
                 ## print("missForest")
@@ -375,6 +379,7 @@ for (i in 1:runs) {
                     result[i, j, k, 11, 8] <- tmp$uknownRates[3]
                     result[i, j, k, 12, 8] <- tmp$uknownRates[4]
                     result[i, j, k, 13, 8] <- tmp$subtopo
+                    result[i, j, k, 14, 8] <- tmp$auc
                     result[i, j, k, 4, 8] <- tmp$cor
                     result[i, j, k, 6, 8] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
                     ## print("mice")
@@ -413,6 +418,7 @@ for (i in 1:runs) {
                 result[i, j, k, 11, 9] <- tmp$uknownRates[3]
                 result[i, j, k, 12, 9] <- tmp$uknownRates[4]
                 result[i, j, k, 13, 9] <- tmp$subtopo
+                result[i, j, k, 14, 9] <- tmp$auc
                 result[i, j, k, 4, 9] <- tmp$cor
                 result[i, j, k, 6, 9] <- sum(apply(ures$Gamma, 2, sum) < 0.5 & colnames(sim$data) %in% Sgenes4)/sum(colnames(sim$data) %in% Sgenes4)
                 ## print("knn")
@@ -448,6 +454,36 @@ if (is.na(runs2)) {
 }
 
 stop("done")
+
+## testing:
+
+aucs <- NULL
+for (i in 1:100) {
+    A <- matrix(runif(30), 5, 6)
+    B <- matrix(sample(c(0,1), 30, replace = TRUE), 5, 6)
+    auc <- 0
+    ppv <- rec <- NULL
+    for (cut in seq(0,1, length.out = 100)) {
+        gamtmp <- apply(A, 2, function(x) {
+            y <- x*0
+            y[which(x > cut)] <- 1
+            return(y)
+        })
+        tp <- sum(gamtmp == 1 & B == 1)
+        fp <- sum(gamtmp == 1 & B == 0)
+        tn <- sum(gamtmp == 0 & B == 0)
+        fn <- sum(gamtmp == 0 & B == 1)
+        ppvtmp <-  tp/(tp+fp)
+        if (is.na(ppvtmp)) { ppvtmp <- 0.5 }
+        auc <- auc + ppvtmp
+        ppv <- c(ppv, ppvtmp)
+        rec <- c(rec, tp/(tp+fn))
+    }
+    auc <- auc/100
+    aucs <- c(aucs, auc)
+}
+
+plot(rec, ppv, main = auc)
 
 ## analyse ll decrease:
 
@@ -562,7 +598,7 @@ Pgenes=100
 
 bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '1' '${nCells}' < nempi_app.r"
 
-for i in {}; do
+for i in {2..100}; do
     bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '${i}' '${nCells}' < nempi_app.r"
 done
 
@@ -603,6 +639,8 @@ for (i in 1:100) {
             result2[i,,,,] <- result[i,,,,]
         }
         cat(paste0(i, "."))
+    } else {
+        result2 <- result2[-i,,,,]
     }
 }
 result <- result2
@@ -634,10 +672,10 @@ save(result, file = paste("~/Mount/Euler/unem_missing_unknowns", knowns, highnoi
 
 ## figure plots:
 
-statCells <- 1
-wrong <- 0; knowns <- 8 # 8 | > 15
-show2 <- 4 # 1,4,6,13
-shownoise <- c(1,2,3); showleg <- 1; perturb <- 0
+statCells <- 0
+wrong <- 0; knowns <- 800 # 8 | > 15
+show2 <- 4 # 1,4,6,13,14
+shownoise <- c(1,2,3); showleg <- 0; perturb <- -0.5
 if (knowns > 8) {
     if (perturb == 0) {
         doSgenes <- c(5,10,15)
@@ -645,7 +683,11 @@ if (knowns > 8) {
         doSgenes <- 10
     }
 } else {
-    doSgenes <- c(50,100)
+    if (!statCells) {
+        doSgenes <- c(50,100)
+    } else {
+        doSgenes <- 50
+    }
     lost <- c(0.1, 0.9)
 }
 highnoise <- 1; complete <- 1; Egenes <- 10; multi <- c(0.2, 0.1); noise2 <- 0.5
@@ -694,6 +736,8 @@ for (Sgenes in doSgenes) {
                 } else {
                     nCells <- 1000
                 }
+            } else {
+                nCells <- statCells
             }
             if (wrong) {
                 noise2 <- 0.5
@@ -715,6 +759,8 @@ for (Sgenes in doSgenes) {
                 ylab <- "fraction of correct attachments"
             } else if (s == 6) {
                 ylab <- "fraction of identified null samples"
+            } else if (s == 14) {
+                ylab <- "area under the precision recall curve"
             }
             ylim <- c(ymin2,1)
             if (s < dim(result)[4]) {
@@ -744,6 +790,13 @@ for (Sgenes in doSgenes) {
                     TP <- result[,i,k,7,show]; FP <- result[,i,k,8,show]; databox <- cbind(databox, TP/(TP+FP))
                 } else if (s == 106) {
                     TN <- result[,i,k,11,show]; FN <- result[,i,k,12,show]; databox <- cbind(databox, TN/(TN+FN))
+                } else if (s == 14) {
+                    TP <- result[,i,k,2,6:9]+result[,i,k,9,6:9]
+                    FP <- result[,i,k,3,6:9]+result[,i,k,10,6:9]
+                    FN <- result[,i,k,8,6:9]+result[,i,k,12,6:9]
+                    ## result[,i,k,s,6:9] <- TP/(TP+FP)
+                    result[,i,k,s,6:9] <- (TP/(TP+FP)+TP/(TP+FN))/2
+                    databox <- cbind(databox, result[,i,k,s,show])
                 } else {
                     databox <- cbind(databox, result[,i,k,s,show])
                 }
@@ -877,6 +930,13 @@ tmp <- D2
 # colnames(tmp) <- rownames(tmp) <- NULL
 epiNEM::HeatmapOP(tmp)
 dev.off()
+
+
+
+
+
+
+
 
 
 
