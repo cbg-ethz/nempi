@@ -178,7 +178,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
             pi[which(pi == 0)] <- 1
         }
         if (!full) {
-            G <- G[, which(colnames(Gamma) %in% unknown)]
+            G <- G[, which(colnames(Gamma) %in% unknown), drop = FALSE]
         }
         if (complete) {
             Z <- expG(G, complete = complete)
@@ -400,7 +400,7 @@ classpi <- function(D, unknown = "", full = TRUE,
         if (method %in% "randomForest") {
             sres <- randomForest(label ~ ., data = train)
         }
-        DU <- D[, which(colnames(D) == unknown)]
+        DU <- D[, which(colnames(D) == unknown), drop = FALSE]
         test <- as.data.frame(t(DU))
         colnames(test) <- paste0("Var", seq_len(ncol(test)))
         traintest <- as.data.frame(t(D))
@@ -418,32 +418,32 @@ classpi <- function(D, unknown = "", full = TRUE,
                 if (method %in% "svm") {
                     p <- predict(sres, test2, probability = TRUE)
                     p <- attr(p, "probabilities")
-                    p <- p[, naturalsort(colnames(p))]
+                    p <- p[, naturalsort(colnames(p)), drop = FALSE]
                 }
                 if (method %in% "nnet") {
                     p <- predict(sres, test2)
                 }
                 if (method %in% "randomForest") {
                     p <- predict(sres, test2,
-                                                             type = "prob")
-                    p <- p[, naturalsort(colnames(p))]
+                                 type = "prob")
+                    p <- p[, naturalsort(colnames(p)), drop = FALSE]
                 }
                 Gamma <- t(p)
                 colnames(Gamma) <- rep("", ncol(Gamma))
             } else {
                 if (method %in% "svm") {
                     p <- predict(sres, traintest,
-                                             probability = TRUE)
+                                 probability = TRUE)
                     p <- attr(p, "probabilities")
-                    p <- p[, naturalsort(colnames(p))]
+                    p <- p[, naturalsort(colnames(p)), drop = FALSE]
                 }
                 if (method %in% "nnet") {
                     p <-  predict(sres, traintest)
                 }
                 if (method %in% "randomForest") {
                     p <- predict(sres, traintest,
-                                                             type = "prob")
-                    p <- p[, naturalsort(colnames(p))]
+                                 type = "prob")
+                    p <- p[, naturalsort(colnames(p)), drop = FALSE]
                 }
                 Gamma <- t(p)
                 colnames(Gamma) <- colnames(D)
