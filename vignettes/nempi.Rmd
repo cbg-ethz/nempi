@@ -4,7 +4,9 @@ Inference of unobserved perturbations from gene expression profiles."
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
-output: BiocStyle::pdf_document
+header-includes:
+    - \usepackage{xcolor}
+output: BiocStyle::html_document
 vignette: >
     %\VignetteIndexEntry{nempi}
     %\VignetteEngine{knitr::rmarkdown}
@@ -19,8 +21,12 @@ e.g. via mutations, copy number abberations or methylation. However,
 not all perturbations are observed in all samples.
 
 Nested Effects Model-based perturbation inference (NEM$\pi$) uses
-observed perturbation profiles and gene expression data to infer
-unobserv perturbations and augment observed ones.
+observed perturbation profiles and gene expression data to infer(
+unobserved perturbations and augment observed ones. The perturbed genes
+(P-genes) are modelled in a signalling pathway $\phi$ and the genes with
+observed gene expression (E-genes) are modelled with the attachment
+$\theta$. If E-gene $j$ is attached to P-gene $i$, $j$ shows an effect
+for a perturbation of P-gene $i$.
 
 # Installation and loading
 ```{r global_options, include=FALSE}
@@ -41,9 +47,8 @@ paltmp[4] <- "brown"
 palette(paltmp)
 ```
 
-The pacakge is not yet in bioconductor. Use devtools to install the
-latest version from gtihub. Install the package with the bioconductor
-manager package.
+Use devtools to install the latest version from github or use the
+BiocManahger to install the package from bioconductor.
 
 ```{r, eval=FALSE}
 install.packages("devtools")
@@ -62,25 +67,29 @@ library(nempi)
 # Small example
 
 We look at a small example for which we first simulate data and then
-infere the unobserved perturbations.
+infer the unobserved perturbations. We draw a random network for the
+perturbed genes (P-genes). Then we simulate gene expression for each
+sample given the subset of P-genes that has been perturbed in the
+sample. E.g., if P-gene A is upstream of P-gene B and P-gene A has
+been perturbed, all E-genes attached to B also show an effect.
 
 ## Data simulation
 
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
 library(mnem)
-seed <- 27
-Pgenes <- 3
+seed <- 42
+Pgenes <- 10
 Egenes <- 10
 samples <- 100
-uninform <- 1
+uninform <- floor((Pgenes*Egenes)*0.1)
 Nems <- mw <- 1
-noise <- 0.5
+noise <- 1
 multi <- c(0.2, 0.1)
 set.seed(seed)    
 simmini <- simData(Sgenes = Pgenes, Egenes = Egenes,
                   Nems = Nems, mw = mw, nCells = samples,
                   uninform = uninform, multi = multi,
-                  badCells = floor(samples*0.05))
+                  badCells = floor(samples*0.1))
 data <- simmini$data
 ones <- which(data == 1)
 zeros <- which(data == 0)
@@ -91,40 +100,51 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   dendrogram = "both")
 ```
 The typical data input for NEM$\pi$ consists of a data matrix with
-                  samples as columns and features (genes) as rows. The
-                  columns are either labeled by their perturbed gene
+                  samples as columns and E-genes as rows. The
+                  columns are either labeled by their perturbed gene(s)
                   or unlabeled (default: ""). After the data
-                  simulation all samples are labeled. We lose $10\%$
-                  of the perturbation information.
+                  simulation all samples are labeled. We unlabel $50\%$
+                  of the sample and pretend we do not know, which P-gene
+                  has been perturbed.
 
 ```{r}
-lost <- sample(1:ncol(data), floor(ncol(data)*0.1))
+lost <- sample(1:ncol(data), floor(ncol(data)*0.5))
 colnames(data)[lost] <- ""
 ```
 
-We use NEM$\pi$ and other methods to infer the perturbations.
+## Perturbation inference
+
+We use NEM$\pi$ and other methods to infer the perturbations. We use
+correlation and the area under the precision recal curve as the two
+measures of accuracy.
 
 ```{r}
 res <- nempi(data)
-
-print(nempi:::pifit(res, simmini, data)$cor)
+fit <- pifit(res, simmini, data)
+print(c(Correlation = fit$cor, AUC = fit$auc))
 
 ressvm <- classpi(data)
-print(nempi:::pifit(ressvm, simmini, data)$cor)
+fit <- pifit(ressvm, simmini, data, propagate = FALSE)
+print(c(Correlation = fit$cor, AUC = fit$auc))
 
 resnn <- classpi(data, method = "nnet")
-print(nempi:::pifit(resnn, simmini, data)$cor)
+fit <- pifit(resnn, simmini, data, propagate = FALSE)
+print(c(Correlation = fit$cor, AUC = fit$auc))
 
 resrf <- classpi(data, method = "randomForest")
-print(nempi:::pifit(resrf, simmini, data)$cor)
+fit <- pifit(resrf, simmini, data, propagate = FALSE)
+print(c(Correlation = fit$cor, AUC = fit$auc))
 ```
 
 Comapred to support vector machines (svm), neural nets (nnet) and
 random forest (rf) class prediction, NEM$\pi$ achieves a higher
 accuracy.
 
+## Prior matrix
+
 Alternatively, we can also provide NEM$\pi$ with a probabilistic
-perturbation matrix $\Gamma$. In the rows are the potentially perturbed
+perturbation matrix $\Gamma$ as a prior. In the rows are the potentially
+perturbed
 genes and in the columns are the samples. The entries are between $0$
 and $1$, with the sum of all entries of a sample summing to $1$.
 
@@ -147,7 +167,8 @@ epiNEM::HeatmapOP(Gamma, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
 colnames(data) <- sample(seq_len(Pgenes), ncol(data), replace = TRUE)
 res <- nempi(data, Gamma = Gamma)
 
-print(nempi:::pifit(res, simmini, data)$cor)
+fit <- nempi:::pifit(res, simmini, data)
+print(c(Correlation = fit$cor, AUC = fit$auc))
 ```
 
 # Session information
@@ -167,7 +188,8 @@ Nested effects models for high-dimensional phenotyping
 screens. Bioinformatics, 23(13), i305–i312.
 
 Pirkl, M., Beerenwinkel, N.; Single cell network analysis with a mixture
-of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September 2018,
+of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September
+2018,
 Pages i964–i971, https://doi.org/10.1093/bioinformatics/bty602.
 
 Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK (2015).

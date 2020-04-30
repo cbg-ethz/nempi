@@ -11,7 +11,7 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 biocViews: Software, GeneExpression, DifferentialExpression, DifferentialMethylation, GeneSignaling, Pathways, Network, Classification, NeuralNetwork
-Imports: mnem, e1071, nnet, randomForest, naturalsort, graphics, stats, utils, nem, matrixStats
+Imports: mnem, e1071, nnet, randomForest, naturalsort, graphics, stats, utils, matrixStats
 VignetteBuilder: knitr
 Suggests: knitr, BiocGenerics, epiNEM
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0

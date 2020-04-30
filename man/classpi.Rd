@@ -4,8 +4,15 @@
 \alias{classpi}
 \title{Classification}
 \usage{
-classpi(D, unknown = "", full = TRUE, method = "svm", size = NULL,
-  MaxNWts = 10000, ...)
+classpi(
+  D,
+  unknown = "",
+  full = TRUE,
+  method = "svm",
+  size = NULL,
+  MaxNWts = 10000,
+  ...
+)
 }
 \arguments{
 \item{D}{either a binary effects matrix or log odds matrix as

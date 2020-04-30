@@ -30,7 +30,7 @@
 #' @return nempi object
 #' @author Martin Pirkl
 #' @export
-#' @import mnem naturalsort nem matrixStats
+#' @import mnem naturalsort matrixStats
 #' @examples
 #' D <- matrix(rnorm(1000*100), 1000, 100)
 #' colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
@@ -355,7 +355,7 @@ plotConvergence <- function(x, ...) {
 #' @return plot
 #' @author Martin Pirkl
 #' @export
-#' @import e1071 nnet randomForest mnem nem
+#' @import e1071 nnet randomForest mnem
 #' @importFrom stats predict
 #' @examples
 #' D <- matrix(rnorm(1000*100), 1000, 100)
@@ -480,4 +480,156 @@ classpi <- function(D, unknown = "", full = TRUE,
     ures <- list(res = res, Gamma = Gamma, probs = Gamma, full = full,
                  null = FALSE, ll = ll, lls = lls)
     return(ures)
+}
+#' Accuracy computation
+#'
+#' Compares the ground truth of a perturbation profile with
+#' the inferred profile
+#' @param x object of class nempi
+#' @param y object of class mnemsim
+#' @param D data matrix
+#' @param unknown label for the unlabelled samples
+#' @param balanced if TRUE, computes balanced accuracy
+#' @param propagate if TRUE, propagates the perturbation through the network
+#' @param knowns subset of P-genes that are known to be
+#' perturbed (the other are neglegted)
+#' @return list of different accuracy measures: true/false positives/negatives,
+#' correlation, area under the precision recall curve, (balanced) accuracy
+#' @author Martin Pirkl
+#' @export
+#' @import mnem
+#' @importFrom stats predict
+#' @examples
+#' library(mnem)
+#' seed <- 42
+#' Pgenes <- 10
+#' Egenes <- 10
+#' samples <- 100
+#' uninform <- floor((Pgenes*Egenes)*0.1)
+#' Nems <- mw <- 1
+#' noise <- 1
+#' multi <- c(0.2, 0.1)
+#' set.seed(seed)
+#' simmini <- simData(Sgenes = Pgenes, Egenes = Egenes,
+#' Nems = Nems, mw = mw, nCells = samples,
+#' uninform = uninform, multi = multi,
+#' badCells = floor(samples*0.1))
+#' data <- simmini$data
+#' ones <- which(data == 1)
+#' zeros <- which(data == 0)
+#' data[ones] <- rnorm(length(ones), 1, noise)
+#' data[zeros] <- rnorm(length(zeros), -1, noise)
+#' lost <- sample(1:ncol(data), floor(ncol(data)*0.5))
+#' colnames(data)[lost] <- ""
+#' res <- nempi(data)
+#' fit <- pifit(res, simmini, data)
+#' @importFrom stats cor
+pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
+                  knowns = NULL) {
+    Gamma <- getGamma(y$data)
+    Gamma[which(Gamma > 1)] <- 1
+    x$Gamma[which(is.na(x$Gamma) == TRUE)] <- 0
+    Sgenes <- rownames(x$Gamma)
+    kept <- Sgenes[which(Sgenes %in%
+                                  unlist(strsplit(colnames(D), "_")))]
+    miss <- which(!(Sgenes %in% kept))
+    combi <- min(x$combi, nrow(Gamma) - 1)
+    null <- x$null
+    if (length(miss) > 0) {
+        x$Gamma <- rbind(x$Gamma, matrix(0, length(miss), ncol(x$Gamma)))
+        rownames(x$Gamma)[-seq_len(length(kept))] <- miss
+        x$Gamma <- x$Gamma[naturalorder(rownames(x$Gamma)), ]
+        A <- x$res$adj
+        rownames(A) <- colnames(A) <- kept
+        A <- cbind(A, matrix(0, nrow(A), length(miss)))
+        A <- rbind(A, matrix(0, length(miss), ncol(A)))
+        rownames(A)[-seq_len(length(kept))] <-
+            colnames(A)[-seq_len(length(kept))] <- miss
+        A <- A[naturalorder(rownames(A)), naturalorder(colnames(A))]
+    }
+    A <- mytc(x$res$adj)
+    B <- mytc(y$Nem[[1]])
+    ## Gammasoft <- rhosoft(y, D, combi = combi, null = null)
+    Gammasoft <- apply(Gamma, 2, function(x) return(x/sum(x)))
+    Gammasoft[which(is.nan(Gammasoft) == TRUE)] <- 0
+    if (propagate) {
+        x$Gamma <- t(A)%*%x$Gamma
+    }
+    Gammasoft <- t(B)%*%Gammasoft
+    if (!is.null(knowns)) {
+        Gammasoft <- Gammasoft[which(rownames(Gammasoft) %in% knowns), ]
+    }
+    corres <- cor(as.vector(x$Gamma), as.vector(Gammasoft))
+    gamsave <- x$Gamma
+    x$Gamma <- apply(x$Gamma, 2, function(x) {
+        y <- x*0
+        y[which(x > 1/nrow(Gamma))] <- 1
+        return(y)
+    })
+    Gamma <- t(B)%*%Gamma
+    Gamma[which(Gamma > 1)] <- 1
+    colnames(Gamma) <- colnames(x$Gamma) <- colnames(D)
+    n <- nrow(A)
+    if (!is.null(knowns)) {
+        B <- B[which(rownames(B) %in% knowns), which(colnames(B) %in% knowns)]
+        Gamma <- Gamma[which(rownames(Gamma) %in% knowns), ]
+    }
+    net <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
+    subtopo <- sum(x$res$subtopo == y$theta[[1]])/length(y$theta[[1]])
+    tp <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 1 &
+              Gamma[, which(colnames(x$Gamma) != unknown)] == 1)
+    fp <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 1 &
+              Gamma[, which(colnames(x$Gamma) != unknown)] == 0)
+    tn <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 0 &
+              Gamma[, which(colnames(x$Gamma) != unknown)] == 0)
+    fn <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 0 &
+              Gamma[, which(colnames(x$Gamma) != unknown)] == 1)
+    rates1 <- c(tp, fp, tn, fn)
+    if (balanced) {
+        known <- (((tp)/(tp+fn))+((tn)/(tn+fp)))/2
+    } else {
+        known <- (tp+tn)/(tp+tn+fp+fn)
+    }
+    tp <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 1 &
+              Gamma[, which(colnames(x$Gamma) == unknown)] == 1)
+    fp <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 1 &
+              Gamma[, which(colnames(x$Gamma) == unknown)] == 0)
+    tn <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 0 &
+              Gamma[, which(colnames(x$Gamma) == unknown)] == 0)
+    fn <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 0 &
+              Gamma[, which(colnames(x$Gamma) == unknown)] == 1)
+    rates2 <- c(tp, fp, tn, fn)
+    if (balanced) {
+        known2 <- (((tp)/(tp+fn))+((tn)/(tn+fp)))/2
+    } else {
+        known2 <- (tp+tn)/(tp+tn+fp+fn)
+    }
+    known <- c(known, known2)
+    names(known) <- c("known", "unknown")
+    ## put in prec-recall AUC?:
+    auc <- 0
+    ppv <- rec <- NULL
+    for (cut in seq(1,0, length.out = 100)) {
+        gamtmp <- apply(gamsave, 2, function(x) {
+            y <- x*0
+            y[which(x > cut)] <- 1
+            return(y)
+        })
+        tp <- sum(gamtmp == 1 & Gamma == 1)
+        fp <- sum(gamtmp == 1 & Gamma == 0)
+        tn <- sum(gamtmp == 0 & Gamma == 0)
+        fn <- sum(gamtmp == 0 & Gamma == 1)
+        ppvtmp <-  tp/(tp+fp)
+        if (is.na(ppvtmp)) { ppvtmp <- 0.5 }
+        rectmp <- tp/(tp+fn)
+        if (length(ppv) > 0) {
+            auc <- auc + (rectmp-rec[length(rec)])*(ppvtmp+ppv[length(ppv)])/2
+        } else {
+            auc <- auc + rectmp*ppvtmp
+        }
+        ppv <- c(ppv, ppvtmp)
+        rec <- c(rec, rectmp)
+    }
+    return(list(net = net, subtopo = subtopo, known = known, cor = corres,
+                knownRates = rates1, uknownRates = rates2, auc = auc))
 }

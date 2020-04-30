@@ -4,10 +4,26 @@
 \alias{nempi}
 \title{Main function for NEM based perturbation imputation.}
 \usage{
-nempi(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
-  verbose = FALSE, logtype = 2, null = TRUE, soft = TRUE,
-  combi = 1, converged = 0.1, complete = TRUE, mw = NULL,
-  max_iter = 100, keepphi = TRUE, start = NULL, phi = NULL, ...)
+nempi(
+  D,
+  unknown = "",
+  Gamma = NULL,
+  type = "null",
+  full = TRUE,
+  verbose = FALSE,
+  logtype = 2,
+  null = TRUE,
+  soft = TRUE,
+  combi = 1,
+  converged = 0.1,
+  complete = TRUE,
+  mw = NULL,
+  max_iter = 100,
+  keepphi = TRUE,
+  start = NULL,
+  phi = NULL,
+  ...
+)
 }
 \arguments{
 \item{D}{either a binary effects matrix or log odds matrix as
