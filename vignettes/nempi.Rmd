@@ -21,12 +21,18 @@ e.g. via mutations, copy number abberations or methylation. However,
 not all perturbations are observed in all samples.
 
 Nested Effects Model-based perturbation inference (NEM$\pi$) uses
-observed perturbation profiles and gene expression data to infer(
-unobserved perturbations and augment observed ones. The perturbed genes
-(P-genes) are modelled in a signalling pathway $\phi$ and the genes with
+observed perturbation profiles and gene expression data to infer
+unobserved perturbations and augment observed ones. The causal 
+network of the perturbed genes
+(P-genes) is modelled as an adjacency matrix $\phi$ and the genes with
 observed gene expression (E-genes) are modelled with the attachment
-$\theta$. If E-gene $j$ is attached to P-gene $i$, $j$ shows an effect
-for a perturbation of P-gene $i$.
+$\theta$ with $\theta_{ij}=1$, if E-gene $j$ is attached to 
+S-gene $i$. If E-gene $j$ is attached to P-gene $i$, $j$ shows an effect
+for a perturbation of P-gene $i$. Hence, $\phi\theta$ predicts gene 
+expression profiles, which can be compared to the real 
+data. NEM$\pi$ iteratively infers a network $\phi$ based on 
+gene expression profiles and a perturbation profile, and the 
+perturbation profile based on a network $\phi$.
 
 # Installation and loading
 ```{r global_options, include=FALSE}
@@ -77,10 +83,11 @@ been perturbed, all E-genes attached to B also show an effect.
 
 ```{r, fig.height=6, fig.width=10, fig.cap=fig.cap0}
 library(mnem)
-seed <- 42
+seed <- 8675309
 Pgenes <- 10
-Egenes <- 10
+Egenes <- 5
 samples <- 100
+edgeprob <- 0.5
 uninform <- floor((Pgenes*Egenes)*0.1)
 Nems <- mw <- 1
 noise <- 1
@@ -89,7 +96,7 @@ set.seed(seed)
 simmini <- simData(Sgenes = Pgenes, Egenes = Egenes,
                   Nems = Nems, mw = mw, nCells = samples,
                   uninform = uninform, multi = multi,
-                  badCells = floor(samples*0.1))
+                  badCells = floor(samples*0.1), edgeprob=edgeprob)
 data <- simmini$data
 ones <- which(data == 1)
 zeros <- which(data == 0)
@@ -100,12 +107,12 @@ epiNEM::HeatmapOP(data, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
                   dendrogram = "both")
 ```
 The typical data input for NEM$\pi$ consists of a data matrix with
-                  samples as columns and E-genes as rows. The
-                  columns are either labeled by their perturbed gene(s)
-                  or unlabeled (default: ""). After the data
-                  simulation all samples are labeled. We unlabel $50\%$
-                  of the sample and pretend we do not know, which P-gene
-                  has been perturbed.
+samples as columns and E-genes as rows. The
+columns are either labeled by their perturbed gene(s)
+or unlabeled (default: ""). After the data
+simulation all samples are labeled. We unlabel $50\%$
+of the sample and pretend we do not know, which P-gene
+has been perturbed.              
 
 ```{r}
 lost <- sample(1:ncol(data), floor(ncol(data)*0.5))
@@ -114,31 +121,35 @@ colnames(data)[lost] <- ""
 
 ## Perturbation inference
 
-We use NEM$\pi$ and other methods to infer the perturbations. We use
-correlation and the area under the precision recal curve as the two
-measures of accuracy.
+We use NEM$\pi$ and other methods to infer the perturbations. We 
+use the area under the precision recal curve as the two measures of accuracy.
 
 ```{r}
 res <- nempi(data)
 fit <- pifit(res, simmini, data)
-print(c(Correlation = fit$cor, AUC = fit$auc))
+print(fit$auc)
 
 ressvm <- classpi(data)
 fit <- pifit(ressvm, simmini, data, propagate = FALSE)
-print(c(Correlation = fit$cor, AUC = fit$auc))
+print(fit$auc)
 
 resnn <- classpi(data, method = "nnet")
 fit <- pifit(resnn, simmini, data, propagate = FALSE)
-print(c(Correlation = fit$cor, AUC = fit$auc))
+print(fit$auc)
 
 resrf <- classpi(data, method = "randomForest")
 fit <- pifit(resrf, simmini, data, propagate = FALSE)
-print(c(Correlation = fit$cor, AUC = fit$auc))
+print(fit$auc)
 ```
 
 Comapred to support vector machines (svm), neural nets (nnet) and
 random forest (rf) class prediction, NEM$\pi$ achieves a higher
 accuracy.
+                  
+Note that NEM$\pi$ is in general more powerful, if the P-genes are 
+connected in a denser network. The other methods perform equally well 
+for sparse or even disconnected network $\phi$. However, they usually 
+profit from combinatorial perturbations.
 
 ## Prior matrix
 
@@ -167,8 +178,24 @@ epiNEM::HeatmapOP(Gamma, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
 colnames(data) <- sample(seq_len(Pgenes), ncol(data), replace = TRUE)
 res <- nempi(data, Gamma = Gamma)
 
-fit <- nempi:::pifit(res, simmini, data)
-print(c(Correlation = fit$cor, AUC = fit$auc))
+fit <- pifit(res, simmini, data)
+print(fit$auc)
+```
+
+## Final perturbation matrix
+
+The final perturbation matrix $\Omega$ over all samples is slightly 
+different from the matrix $\Gamma$ we used as input. $\Gamma$ only denotes 
+the most upstream P-gene perturbed. E.g., if A is upstream of B, than 
+$\Gamma$ only denotes a perturbation of A, even though B is also perturbed 
+in every samples in which B is perturbed. We can compute it by the 
+matrix multiplication $\Omega = \phi^T \times \Gamma$.
+
+```{r}
+Omega <- t(mnem::transitive.closure(res$res$adj))%*%res$Gamma
+epiNEM::HeatmapOP(Omega, col = "RdBu", cexRow = 0.75, cexCol = 0.75,
+                  bordercol = "transparent", xrot = 0,
+                  dendrogram = "both")
 ```
 
 # Session information

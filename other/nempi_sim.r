@@ -1,4 +1,4 @@
-## Sgenes <- 5; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 1000; runs2 <- NA; nCells <- NA; perturb <- NA
+## Sgenes <- 10; wrong <- 0; highnoise <- 1; doclass <- 1; knowns <- 80; runs2 <- NA; nCells <- NA; perturb <- 0.5
 
 library(naturalsort)
 library(nem)
@@ -54,7 +54,7 @@ multi <- c(0.2, 0.1)
 complete <- 1
 combi <- 1
 combisvm <- NULL
-null <- 1
+null <- TRUE
 badCells <- 0.1
 
 if (wrong) { lost <- lost[1:2] }
@@ -85,7 +85,6 @@ for (i in 1:runs) {
             } else {
                 Sgenes2 <- 1:Sgenes
             }
-
             noise1 <- noises[j]
             if (!wrong) {
                 noise2 <- lost[k]
@@ -95,7 +94,9 @@ for (i in 1:runs) {
 
             sim <- simData(Sgenes = Sgenes, Egenes = Egenes, mw = 1,
                            nCells = nCells, Nem = 1, multi = multi,
-                           badCells = floor(nCells*badCells), uninform = floor(Egenes*Sgenes*0.1))
+                           badCells = floor(nCells*badCells),
+                           uninform = floor(Egenes*Sgenes*0.1),
+                           exactProb = TRUE, edgeprob = runif(1,0,1))
             if (!all(1:Sgenes %in% unique(unlist(strsplit(colnames(sim$data), "_"))))) {
                 kdata <- t(sim$Nem[[1]])
                 kdata <- rbind(kdata[rep(1:nrow(kdata), each = Egenes), , drop = FALSE],
@@ -147,9 +148,7 @@ for (i in 1:runs) {
             if (multi[1] != FALSE) {
                 multi2 <- TRUE
             }
-
             paras <- expand.grid(c(0,1), c(0,1), c(0,1))
-
             if (knowns < Sgenes) {
                 colnames(D) <- gsub(paste(paste0("_", Sgenes3, "_"), collapse = "|"), "_", colnames(D))
                 colnames(D) <- gsub(paste(c(paste0("^", Sgenes3, "_"),
@@ -171,22 +170,37 @@ for (i in 1:runs) {
             s <- 2
             type <- "null"
             if (perturb > 0) {
-                pertphi <- sim$Nem[[1]]
-                ppo <- order(apply(mytc(pertphi), 1, sum))
+                pertphi <- mytc(sim$Nem[[1]])
+                ppo <- order(apply(mytc(pertphi), 1, sum)-apply(mytc(pertphi), 2, sum),decreasing=TRUE)
                 pertphi <- pertphi[ppo, ppo]
-                pp1 <- floor(perturb*sum(pertphi == 1))
-                pertphi[sample(which(pertphi == 1), pp1)] <- 0
-                pp1 <- max(pp1, 1)
-                pp0 <- which(lower.tri(pertphi) & pertphi == 0)
-                pertphi[pp0] <- sample(c(rep(0, length(pp0)-pp1), rep(1, pp1)), length(pp0))
+                pp0 <- which(upper.tri(pertphi) & pertphi == 0)
+                pp1 <- which(upper.tri(pertphi) & pertphi == 1)
+                if (length(pp0)!=0) {
+                    if (length(pp1)!=0) {
+                        pertphi[sample(pp0,min(length(pp0),floor(perturb*length(pp1))))] <- 1
+                    } else {
+                        pertphi[sample(pp0,1)] <- 1
+                    }
+                }
                 pertphi <- pertphi[naturalorder(rownames(pertphi)), naturalorder(colnames(pertphi))]
                 start <- as.numeric(format(Sys.time(), "%s"))
-                ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], combi = combi, multi = multi2, complete = complete, null = null, phi = pertphi)
+                ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], complete = complete, null = null, phi = pertphi)
+                s <- 1
+                result[i, j, k, 5, s] <- as.numeric(format(Sys.time(), "%s")) - start
+            } else if (perturb < 0) {
+                pertphi <- mytc(sim$Nem[[1]])
+                ppo <- order(apply(mytc(pertphi), 1, sum)-apply(mytc(pertphi), 2, sum),decreasing=TRUE)
+                pertphi <- pertphi[ppo, ppo]
+                pp1 <- which(upper.tri(pertphi) & pertphi == 1)
+                pertphi[sample(pp1,floor(abs(perturb)*length(pp1)))] <- 0
+                pertphi <- pertphi[naturalorder(rownames(pertphi)), naturalorder(colnames(pertphi))]
+                start <- as.numeric(format(Sys.time(), "%s"))
+                ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], complete = complete, null = null, phi = pertphi)
                 s <- 1
                 result[i, j, k, 5, s] <- as.numeric(format(Sys.time(), "%s")) - start
             } else {
                 start <- as.numeric(format(Sys.time(), "%s"))
-                ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], combi = combi, multi = multi2, complete = complete, null = null)
+                ures <- nempi(D, full = paras[s, 1], type = type, soft = paras[s+2, 2], complete = complete, null = null)
                 s <- 1
                 result[i, j, k, 5, s] <- as.numeric(format(Sys.time(), "%s")) - start
             }
@@ -195,7 +209,6 @@ for (i in 1:runs) {
             } else {
                 tmp <- pifit(ures, sim, D)
             }
-            par(mfrow=c(2,3))
             result[i, j, k, 1, s] <- tmp$net
             result[i, j, k, 2, s] <- tmp$knownRates[1]
             result[i, j, k, 3, s] <- tmp$knownRates[2]
@@ -216,7 +229,7 @@ for (i in 1:runs) {
 
             ## if (getfalse > 0) { stop() }
 
-            ## source("~/Documents/testing/nempi/R/nempi_main.r"); source("~/Documents/testing/nempi/R/nempi_low.r");
+            ## source("~/Documents/nempi/R/nempi_main.r"); source("~/Documents/nempi/R/nempi_low.r");
 
             if (doclass) {
                 for (s in c(2,4,6)) {
@@ -308,7 +321,7 @@ for (i in 1:runs) {
                 ## missForest
 
                 start <- as.numeric(format(Sys.time(), "%s"))
-                mfdata <- cbind(as.data.frame(t(D)), colnames(D))
+                mfdata <- cbind(as.data.frame(t(D)), factor(colnames(D)))
                 mfdata[which(mfdata == "", arr.ind = TRUE)] <- NA
                 sink("NUL")
                 mfimp <- missForest(mfdata)
@@ -443,12 +456,12 @@ if (is.na(runs2)) {
     }
 } else {
     if (wrong) {
-        save(result, getfalse, lost, file = paste("nempi/unem_misslabeled", runs2, highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+        save(result, getfalse, lost, file = paste("nempi_runs/unem_misslabeled", runs2, highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
     } else {
         if (knowns < Sgenes) {
-            save(result, getfalse, lost, file = paste("nempi/unem_missing_unknowns", runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+            save(result, getfalse, lost, file = paste("nempi_runs/unem_missing_unknowns", runs2, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
         } else {
-            save(result, getfalse, lost, file = paste("nempi/unem_missing", runs2, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+            save(result, getfalse, lost, file = paste("nempi_runs/unem_missing", runs2, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
         }
     }
 }
@@ -456,34 +469,6 @@ if (is.na(runs2)) {
 stop("done")
 
 ## testing:
-
-aucs <- NULL
-for (i in 1:100) {
-    A <- matrix(runif(30), 5, 6)
-    B <- matrix(sample(c(0,1), 30, replace = TRUE), 5, 6)
-    auc <- 0
-    ppv <- rec <- NULL
-    for (cut in seq(0,1, length.out = 100)) {
-        gamtmp <- apply(A, 2, function(x) {
-            y <- x*0
-            y[which(x > cut)] <- 1
-            return(y)
-        })
-        tp <- sum(gamtmp == 1 & B == 1)
-        fp <- sum(gamtmp == 1 & B == 0)
-        tn <- sum(gamtmp == 0 & B == 0)
-        fn <- sum(gamtmp == 0 & B == 1)
-        ppvtmp <-  tp/(tp+fp)
-        if (is.na(ppvtmp)) { ppvtmp <- 0.5 }
-        auc <- auc + ppvtmp
-        ppv <- c(ppv, ppvtmp)
-        rec <- c(rec, tp/(tp+fn))
-    }
-    auc <- auc/100
-    aucs <- c(aucs, auc)
-}
-
-plot(rec, ppv, main = auc)
 
 ## analyse ll decrease:
 
@@ -499,36 +484,14 @@ plotConvergence.nempi(ures, type = "b", col = "red")
 
 ## start pipeline:
 
-system("scp nempi/other/nempi_app.r euler.ethz.ch:")
 system("scp nempi/R/nempi_main.r euler.ethz.ch:")
 system("scp nempi/R/nempi_low.r euler.ethz.ch:")
 system("scp mnem/R/mnems_low.r euler.ethz.ch:")
 system("scp mnem/R/mnems.r euler.ethz.ch:")
-
-Sgenes <- 5; wrong <- 1; highnoise <- 1; source("~/Documents/testing/nempi/vignettes/nempi_app.r");
+system("scp nempi/other/nempi_app.r euler.ethz.ch:")
 
 ## ## on leo/euler:
 
-## leo:
-
-module load r/3.5.1
-
-module load curl/7.53.1
-
-module load gmp/6.1.2
-
-## euler:
-
-module load bioconductor/3.6
-
-module load curl/7.49.1
-
-module load gmp/5.1.3
-
-##
-
-## BiocManager::install("mnem")
-
 ram=10000
 
 rm error.txt
@@ -537,39 +500,37 @@ rm .RData
 
 nCells=NA
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '5' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '15' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '5' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '15' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.24h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '15' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
-bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '5' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '10' '1' '1' '1' 'NA' 'NA' '${nCells}' < nempi_app.r"
 
 ## new with unknowns
 
-ram=10000
+## ram=10000
 
-rm error.txt
-rm output.txt
-rm .RData
+## rm error.txt
+## rm output.txt
+## rm .RData
 
-nCells=500
+## nCells=NA
 
-bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '50' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
+## bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '50' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
 
-ram=10000
+## ram=10000
 
-rm error.txt
-rm output.txt
-rm .RData
+## rm error.txt
+## rm output.txt
+## rm .RData
 
-nCells=NA
-
-bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '100' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
+## bsub -M ${ram} -q normal.120h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '100' '0' '1' '1' '8' 'NA' '${nCells}' < nempi_app.r"
 
 ## new with perturbed net
 
@@ -583,7 +544,7 @@ nCells=NA
 
 perturb=-0.5
 
-bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' ${perturb} < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '10' '0' '1' '1' 'NA' 'NA' '${nCells}' '${perturb}' < nempi_app.r"
 
 ## paralellize (esp. unknowns):
 
@@ -593,29 +554,30 @@ rm error.txt
 rm output.txt
 rm .RData
 
-nCells=1000
-Pgenes=100
+nCells=500
+Pgenes=50
 
-bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '1' '${nCells}' < nempi_app.r"
+bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '97' '${nCells}' < nempi_app.r"
 
 for i in {2..100}; do
-    bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '${i}' '${nCells}' < nempi_app.r"
+    bsub -M ${ram} -q normal.4h -n 1 -e error.txt -o output.txt -R "rusage[mem=${ram}]" "R/bin/R --vanilla --silent --no-save --args '${Pgenes}' '0' '1' '1' '8' '${i}' '${nCells}' < nempi_app.r"
 done
 
 ## missing runs:
 
 knowns <- 8
 highnoise <- complete <- 1
-Sgenes <- 100
+Sgenes <- 50
 Egenes <- 10
 nCells <- 1000
 perturb <- 0
 multi <- c(0.2,0.1)
 
 for (i in 1:100) {
-    filename <- paste("nempi/unem_missing_unknowns", i, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")
+    filename <- paste("nempi_runs/unem_missing_unknowns", i, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")
     if (!file.exists(filename)) {
-       system(paste0("bsub -M 10000 -q normal.4h -n 1 -e error.txt -o output.txt -R \"rusage[mem=10000]\" \"R/bin/R --silent --no-save --args '100' '0' '1' '1' '8' '", i, "' '1000' < nempi_app.r\""))
+        system(paste0("bsub -M 10000 -q normal.4h -n 1 -e error.txt -o output.txt -R \"rusage[mem=10000]\" \"R/bin/R --vanilla --silent --no-save --args '", Sgenes, "' '0' '1' '1' '8' '", i, "' '", nCells, "' < nempi_app.r\""))
+        print(filename)
     }
 }
 
@@ -628,9 +590,10 @@ Egenes <- 10
 nCells <- 1000
 perturb <- 0
 multi <- c(0.2,0.1)
+missing.runs <- NULL
 
 for (i in 1:100) {
-    filename <- paste("~/Mount/Euler/nempi/unem_missing_unknowns", i, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")
+    filename <- paste("~/Mount/Euler/nempi_runs/unem_missing_unknowns", i, knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")
     if (file.exists(filename)) {
         load(filename)
         if (i == 1) {
@@ -640,10 +603,14 @@ for (i in 1:100) {
         }
         cat(paste0(i, "."))
     } else {
-        result2 <- result2[-i,,,,]
+        missing.runs <- c(missing.runs,i)
     }
 }
-result <- result2
+if (is.null(missing.runs)) {
+    result <- result2
+} else {
+    result <- result2[-missing.runs,,,,]
+}
 save(result, file = paste("~/Mount/Euler/unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
 
 ## ## load results:
@@ -673,9 +640,9 @@ save(result, file = paste("~/Mount/Euler/unem_missing_unknowns", knowns, highnoi
 ## figure plots:
 
 statCells <- 0
-wrong <- 0; knowns <- 800 # 8 | > 15
-show2 <- 4 # 1,4,6,13,14
-shownoise <- c(1,2,3); showleg <- 0; perturb <- -0.5
+wrong <- 0; knowns <- 80 # 8 | > 15
+show2 <- 14 # 1,4,6,13,14
+shownoise <- c(1,2,3); showleg <- 0; perturb <- 0.5
 if (knowns > 8) {
     if (perturb == 0) {
         doSgenes <- c(5,10,15)
@@ -753,7 +720,7 @@ for (Sgenes in doSgenes) {
             }
             if (s == 4) {
                 ylab <- "perturbation profile correlation"
-            } else if (s== 1) {
+            } else if (s == 1) {
                 ylab <- "normalised hamming distance"
             } else if (s == 13) {
                 ylab <- "fraction of correct attachments"
@@ -767,11 +734,11 @@ for (Sgenes in doSgenes) {
                 if (dimnames(result)[[4]][s] == "time") {
                     ylim <- NULL
                 }
-                if (dimnames(result)[[4]][s] != "cor") {
+                if (!(dimnames(result)[[4]][s] %in% c("cor","auc","theta","net"))) {
                     ylab <- dimnames(result)[[4]][s]
                 }
             } else {
-                if (s %in% c(101,103,105)) { ylab = "PPV" }
+                if (s %in% c(101,103,105)) { ylab <- "PPV" }
                 if (s %in% c(102,104,106)) { ylab <- "NPV" }
             }
             main <- paste0(main, ": ", lost[k])
@@ -805,16 +772,16 @@ for (Sgenes in doSgenes) {
                       medcol = "black")
             axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show))[1:length(shownoise)], c(1,3,5)[shownoise])
             abline(v=c(length(show)*(1:(length(shownoise)-1))+0.5), col = 1)
-            mnem:::addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
+            #mnem:::addgrid(x=c(-1,1,0.5), y=c(0,length(show)*3+1,1))
         }
     }
 }
-if (wrong == 0 & knowns >= Sgenes & show2 == 4 & showleg) {
-    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n")
+if (wrong == 0 & knowns >= Sgenes & show2 %in% c(4,14) & showleg) {
+    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n", col = "transparent")
     legend(0,1, c(expression(NEM~pi), "svm", "neural net"), c("red", "blue", "darkgreen"), box.col = "transparent", cex = 1.5, ncol = 1)
-    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n")
+    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n", col = "transparent")
     legend(0,1, c("random forest", "missForest", "mice"), c("brown", "orange", "pink"), box.col = "transparent", cex = 1.5, ncol = 1)
-    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n")
+    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n", col = "transparent")
     legend(0,1, c("knn", "random"), c("turquoise", "grey"), box.col = "transparent", cex = 1.5, ncol = 1)
 }
 dev.off()
@@ -905,7 +872,7 @@ path <- "mutclust/"
 type <- "TCGA-BRCA"
 load(paste0(path, type, "_nempi.rda"))
 
-Sgenes <- 10; Egenes <- 10; nCells <- 1000; multi = c(0.2, 0.1); badCells <- 0.1
+Sgenes <- 8; Egenes <- 10; nCells <- 1000; multi = c(0.2, 0.1); badCells <- 0.1
 sim <- simData(Sgenes = Sgenes, Egenes = Egenes, mw = 1, nCells = nCells, Nem = 1, multi = multi, badCells = floor(nCells*badCells), uninform = 10)
 
 pdf("nempi_data_dist.pdf", width = 16, height = 4)
@@ -913,16 +880,20 @@ par(mfrow=c(1,4))
 sdata <- sim$data
 sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 1)
 sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 1)
-hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 1"))
+hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 1"),
+     xlim = c(min(D2),max(D2)), freq = FALSE, ylim = c(0,0.3))
 sdata <- sim$data
-sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 2)
-sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 2)
-hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 2"))
+sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 1, 3)
+sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -1, 3)
+hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 3"),
+     xlim = c(min(D2),max(D2)), freq = FALSE, ylim = c(0,0.3))
 sdata <- sim$data
-sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 0.5, 3)
-sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -0.1, 3)
-hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 3"))
-hist(D2, main = "TCGA breast cancer")
+sdata[which(sim$data == 1)] <- rnorm(sum(sim$data == 1), 0.5, 5)
+sdata[which(sim$data == 0)] <- rnorm(sum(sim$data == 0), -0.1, 5)
+hist(sdata, main = expression("Simulated with " ~ sigma ~ "= 5"),
+     xlim = c(min(D2),max(D2)), freq = FALSE, ylim = c(0,0.3))
+hist(D2, main = "TCGA breast cancer",
+     xlim = c(min(D2),max(D2)), freq = FALSE, ylim = c(0,0.3))
 dev.off()
 
 pdf("temp.pdf", width = 20, height = 5)
@@ -930,6 +901,7 @@ tmp <- D2
 # colnames(tmp) <- rownames(tmp) <- NULL
 epiNEM::HeatmapOP(tmp)
 dev.off()
+
 
 
 
