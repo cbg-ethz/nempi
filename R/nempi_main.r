@@ -26,7 +26,7 @@
 #' @param start starting network as adjacency matrix
 #' @param phi if not NULL uses only this phi and does not infer a new one
 #' @param ... additional parameters for the nem
-#' function (see package mnem, function mnem or mnem:::mynem)
+#' function (see package mnem, function nem or mnem::nem)
 #' @return nempi object
 #' @author Martin Pirkl
 #' @export
@@ -118,14 +118,14 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
             break()
         } else {
             if (is.null(phi)) {
-                res0 <- mynem(D, modified = TRUE, Rho = Gamma,
+                res0 <- nem(D, modified = TRUE, Rho = Gamma,
                                      verbose = verbose,
                               logtype = logtype, start = NULL, ...)
-                res <- mynem(D, modified = TRUE, Rho = Gamma,
+                res <- nem(D, modified = TRUE, Rho = Gamma,
                                     verbose = verbose,
                              logtype = logtype, start = start, ...)
                 ones <- start*0 + 1
-                res1 <- mynem(D, modified = TRUE, Rho = Gamma,
+                res1 <- nem(D, modified = TRUE, Rho = Gamma,
                                      verbose = verbose,
                               logtype = logtype, start = ones, ...)
                 if (res0$score > res$score) { res <- res0 }
@@ -138,14 +138,14 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
                 res$adj <- phi
             }
         }
-        evophi <- c(evophi, sum(abs(mytc(res$adj) - phiold)))
-        phiold <- mytc(res$adj)
+        evophi <- c(evophi, sum(abs(transitive.closure(res$adj) - phiold)))
+        phiold <- transitive.closure(res$adj)
         evotheta <- c(evotheta, sum(thetaold != res$subtopo))
         thetaold <- res$subtopo
         theta <- theta2theta(res$subtopo, res$adj)
-        F <- mytc(res$adj)%*%theta
+        F <- transitive.closure(res$adj)%*%theta
         S <- getulods(F, D, combi)
-        single <- 1
+        single <- TRUE
         if (single) {
             G <- S$G
         } else {
@@ -283,6 +283,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
 #' @return list with aggregate Gamma and aggregate causal network phi
 #' @author Martin Pirkl
 #' @export
+#' @importFrom mnem transitive.closure
 #' @examples
 #' D <- matrix(rnorm(1000*100), 1000, 100)
 #' colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
@@ -304,7 +305,7 @@ nempibs <- function(D, bsruns = 100, bssize = 0.5, replace = TRUE, ...) {
                        replace = replace), ]
         tmp <- nempi(Dr, ...)
         aggGamma <- aggGamma + tmp$Gamma
-        aggPhi <- aggPhi + mytc(tmp$res$adj)
+        aggPhi <- aggPhi + transitive.closure(tmp$res$adj)
     }
     return(list(Gamma = aggGamma, phi = aggPhi))
 }
@@ -351,7 +352,7 @@ plotConvergence <- function(x, ...) {
 #' @param method either one of svm, nn, rf
 #' @param size parameter for neural network (see package 'nnet')
 #' @param MaxNWts parameters for neural network (see package 'nnet')
-#' @param ... additional parameters for mnem:::mynem, see mnem::mnem
+#' @param ... additional parameters for mnem::nem
 #' @return plot
 #' @author Martin Pirkl
 #' @export
@@ -389,7 +390,7 @@ classpi <- function(D, unknown = "", full = TRUE,
                            Sgene, "_|_", Sgene, "_"), colnames(DK))] <- Sgene
         train <- as.data.frame(t(DK))
         colnames(train) <- paste0("Var", seq_len(ncol(train)))
-        train <- cbind(train, label = labels)
+        train <- cbind(train, label = factor(labels))
         if (method %in% "svm") {
             sres <- svm(label ~ ., data = train, probability = TRUE)
         }
@@ -475,7 +476,7 @@ classpi <- function(D, unknown = "", full = TRUE,
         res$adj <- diag(1, n)
         colnames(res$adj) <- rownames(res$adj) <- seq_len(n)
     } else {
-        res <- mynem(D_bkup, Rho = Gamma, ...)
+        res <- nem(D_bkup, Rho = Gamma, ...)
     }
     ures <- list(res = res, Gamma = Gamma, probs = Gamma, full = full,
                  null = FALSE, ll = ll, lls = lls)
@@ -524,6 +525,7 @@ classpi <- function(D, unknown = "", full = TRUE,
 #' res <- nempi(data)
 #' fit <- pifit(res, simmini, data)
 #' @importFrom stats cor
+#' @importFrom mnem transitive.closure
 pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
                   knowns = NULL) {
     Gamma <- getGamma(y$data)
@@ -547,8 +549,8 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
             colnames(A)[-seq_len(length(kept))] <- miss
         A <- A[naturalorder(rownames(A)), naturalorder(colnames(A))]
     }
-    A <- mytc(x$res$adj)
-    B <- mytc(y$Nem[[1]])
+    A <- transitive.closure(x$res$adj)
+    B <- transitive.closure(y$Nem[[1]])
     ## Gammasoft <- rhosoft(y, D, combi = combi, null = null)
     Gammasoft <- apply(Gamma, 2, function(x) return(x/sum(x)))
     Gammasoft[which(is.nan(Gammasoft) == TRUE)] <- 0
@@ -607,29 +609,34 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     known <- c(known, known2)
     names(known) <- c("known", "unknown")
     ## put in prec-recall AUC?:
-    auc <- 0
-    ppv <- rec <- NULL
-    for (cut in seq(1,0, length.out = 100)) {
+    auc <- roc <- 0
+    ppv <- rec <- spec <- NULL
+    for (cut in c(2,seq(1,0, length.out = 100),-1)) {
         gamtmp <- apply(gamsave, 2, function(x) {
             y <- x*0
             y[which(x > cut)] <- 1
             return(y)
         })
-        tp <- sum(gamtmp == 1 & Gamma == 1)
-        fp <- sum(gamtmp == 1 & Gamma == 0)
-        tn <- sum(gamtmp == 0 & Gamma == 0)
-        fn <- sum(gamtmp == 0 & Gamma == 1)
+        gamtmp2 <- Gamma
+        tp <- sum(gamtmp == 1 & gamtmp2 == 1)
+        fp <- sum(gamtmp == 1 & gamtmp2 == 0)
+        tn <- sum(gamtmp == 0 & gamtmp2 == 0)
+        fn <- sum(gamtmp == 0 & gamtmp2 == 1)
         ppvtmp <-  tp/(tp+fp)
         if (is.na(ppvtmp)) { ppvtmp <- 0.5 }
         rectmp <- tp/(tp+fn)
+        spectmp <- 1-tn/(tn+fp)
         if (length(ppv) > 0) {
-            auc <- auc + (rectmp-rec[length(rec)])*(ppvtmp+ppv[length(ppv)])/2
-        } else {
-            auc <- auc + rectmp*ppvtmp
+            auc <- auc +
+                (rectmp-rec[length(rec)])*(ppvtmp+ppv[length(ppv)])/2
+            roc <- roc +
+                (spectmp-spec[length(spec)])*(rectmp+rec[length(rec)])/2
         }
         ppv <- c(ppv, ppvtmp)
         rec <- c(rec, rectmp)
+        spec <- c(spec, spectmp)
     }
     return(list(net = net, subtopo = subtopo, known = known, cor = corres,
-                knownRates = rates1, uknownRates = rates2, auc = auc))
+                knownRates = rates1, uknownRates = rates2, auc = auc,
+                ppv = ppv, rec = rec, spec = spec, roc = roc))
 }

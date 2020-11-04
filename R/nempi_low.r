@@ -1,30 +1,58 @@
 #' @noRd
+theta2theta <- function(x, y) {
+    if (is.matrix(x)) {
+        z <- apply(x, 2, function(x) {
+            if (max(x) == 0) {
+                y <- 0
+            } else {
+                y <- which.max(x)
+            }
+            return(y)
+        })
+    } else {
+        z <- matrix(0, nrow(y), length(x))
+        z[cbind(x, seq_len(ncol(z)))] <- 1
+        rownames(z) <- seq_len(nrow(z))
+        colnames(z) <- seq_len(ncol(z))
+    }
+    return(z)
+}
+#' @noRd
+modData <- function(D) {
+    SgeneN <- getSgeneN(D)
+    Sgenes <- getSgenes(D)
+    if (!all(is.numeric(Sgenes))) {
+        colnamesD <- colnames(D)
+        for (i in seq_len(SgeneN)) {
+            colnamesD <- gsub(paste0("^", Sgenes[i], "$"), i, colnamesD)
+            colnamesD <- gsub(paste0("_", Sgenes[i], "$"),
+                              paste0("_", i), colnamesD)
+            colnamesD <- gsub(paste0("^", Sgenes[i], "_"),
+                              paste0(i, "_"), colnamesD)
+            colnamesD <- gsub(paste0("_", Sgenes[i], "_"),
+                              paste0("_", i, "_"), colnamesD)
+        }
+        colnames(D) <- colnamesD
+    }
+    rownames(D) <- as.numeric(seq_len(nrow(D)))
+    return(D)
+}
+#' @noRd
+getSgeneN <- function(data) {
+    Sgenes <- length(unique(unlist(strsplit(colnames(data), "_"))))
+    return(Sgenes)
+}
+#' @noRd
+getSgenes <- function(data) {
+    Sgenes <- naturalsort(unique(unlist(strsplit(colnames(data), "_"))))
+    return(Sgenes)
+}
+#' @noRd
 auc <- function(a,b) {
     n <- length(a)
     c <- sum((a-c(0,a[-n]))*(b+c(0,b[-n]))/c(1,rep(2,n-1)))
     return(c)
 }
-#' @noRd
-#' @import mnem
-getSgenes <- mnem:::getSgenes
-#' @noRd
-#' @import mnem
-modData <- mnem:::modData
-#' @noRd
-#' @import mnem
-mynem <- mnem:::mynem
-#' @noRd
-#' @import mnem
-scoreAdj <- mnem:::scoreAdj
-#' @noRd
-#' @import mnem
-mytc <- mnem:::mytc
-#' @noRd
-#' @import mnem
-theta2theta <- mnem:::theta2theta
-#' @noRd
-#' @import mnem
-getSgeneN <- mnem:::getSgeneN
 #' @noRd
 #' @importFrom utils combn
 getulods <- function(F, D, combi) {
@@ -71,8 +99,9 @@ getulods <- function(F, D, combi) {
     return(list(G = G, J = J, I = IF, H = HF))
 }
 #' @noRd
+#' @importFrom mnem transitive.closure
 rhosoft <- function(x, D, logtype = 2, combi = 1, null = TRUE) {
-    phi <- mytc(x$Nem[[1]])
+    phi <- transitive.closure(x$Nem[[1]])
     theta <- theta2theta(x$theta[[1]], phi)
     F <- phi%*%theta
     S <- getulods(F, D, combi)

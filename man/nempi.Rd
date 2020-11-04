@@ -67,7 +67,7 @@ if FALSE always starts with start network (and empty and full)}
 \item{phi}{if not NULL uses only this phi and does not infer a new one}
 
 \item{...}{additional parameters for the nem
-function (see package mnem, function mnem or mnem:::mynem)}
+function (see package mnem, function nem or mnem::nem)}
 }
 \value{
 nempi object

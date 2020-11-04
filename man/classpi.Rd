@@ -28,7 +28,7 @@ for Nested Effects Models (see package 'nem')}
 
 \item{MaxNWts}{parameters for neural network (see package 'nnet')}
 
-\item{...}{additional parameters for mnem:::mynem, see mnem::mnem}
+\item{...}{additional parameters for mnem::nem}
 }
 \value{
 plot

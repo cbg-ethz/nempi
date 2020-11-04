@@ -2,11 +2,9 @@ Package: nempi
 Type: Package
 Title: Inferring unobserved perturbations from gene expression data
 Version: 0.99.0
-Date: 2019-30-07
-Author: Martin Pirkl
-Maintainer: Martin Pirkl <martin.pirkl@bsse.ethz.ch>
-Depends: R (>= 3.6)
-Description: Takes as input an incomplete perturbation profile and differential gene expression in logodds and infers unobserved perturbations and augments observed ones.
+Authors@R: person("Martin", "Pirkl", email = "martinpirkl@yahoo.de",role = c("aut", "cre"))
+Depends: R (>= 4.0)
+Description: Takes as input an incomplete perturbation profile and differential gene expression in log odds and infers unobserved perturbations and augments observed ones. The inference is done by iteratively inferring a network from the perturbations and inferring perturbations from the network. The network inference is done by Nested Effects Models.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -14,4 +12,4 @@ biocViews: Software, GeneExpression, DifferentialExpression, DifferentialMethyla
 Imports: mnem, e1071, nnet, randomForest, naturalsort, graphics, stats, utils, matrixStats
 VignetteBuilder: knitr
 Suggests: knitr, BiocGenerics, epiNEM
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
