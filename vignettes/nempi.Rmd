@@ -42,7 +42,7 @@ knitr::opts_chunk$set(message=FALSE, out.width="125%", fig.align="center",
                       fig.height = 4, fig.width = 8, error=FALSE)
 fig.cap0 <- "Heatmap of the simulated log odds. Effects are blue and no effects
 are red. Rows denote the observed E-genes and columns the samples annoted by
-P-genes. Each S-gene
+P-genes. Each P-gene
 has been perturbed in many cells. The E-genes are annotated as how they are
 attached in the ground truth. E.g. E-genes named '1' are attached to S-gene
 '1' in the ground truth."
@@ -122,9 +122,10 @@ colnames(data)[lost] <- ""
 ## Perturbation inference
 
 We use NEM$\pi$ and other methods to infer the perturbations. We 
-use the area under the precision recal curve as the two measures of accuracy.
+use the area under the precision-recall curve as the two measures of
+accuracy. We also plot the NEM$\pi$ result.
 
-```{r}
+```{r,fig.width=6,fig.height=5}
 res <- nempi(data)
 fit <- pifit(res, simmini, data)
 print(fit$auc)
@@ -140,9 +141,13 @@ print(fit$auc)
 resrf <- classpi(data, method = "randomForest")
 fit <- pifit(resrf, simmini, data, propagate = FALSE)
 print(fit$auc)
+
+col <- rgb(seq(0,1,length.out=10),seq(1,0,length.out=10),
+           seq(1,0,length.out=10))
+plot(res,heatlist=list(col="RdBu"),barlist=list(col=col))
 ```
 
-Comapred to support vector machines (svm), neural nets (nnet) and
+Compared to support vector machines (svm), neural nets (nnet) and
 random forest (rf) class prediction, NEM$\pi$ achieves a higher
 accuracy.
                   

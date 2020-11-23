@@ -78,9 +78,9 @@ getulods <- function(F, D, combi) {
             H <- do.call("cbind", Hfull)
         }
         I <- t(H)%*%F
-        I[which(I > 1)] <- 1
+        I[I > 1] <- 1
         didx <- which(duplicated(apply(I, 1, paste, collapse = "")))
-        didx <- didx[which(didx > n)]
+        didx <- didx[didx > n]
         IF <- I
         HF <- H
         if (length(didx) > 0) {
@@ -89,7 +89,7 @@ getulods <- function(F, D, combi) {
         }
         J <- I%*%D
         G <- lapply(seq_len(n), function(i) {
-            x <- apply(J[which(H[i, ] == 1), , drop = FALSE], 2, max,
+            x <- apply(J[H[i, ] == 1, , drop = FALSE], 2, max,
                        na.rm = TRUE)
             return(x)
         })

@@ -639,108 +639,69 @@ save(result, file = paste("~/Mount/Euler/unem_missing_unknowns", knowns, highnoi
 
 ## figure plots:
 
+path <- "~/Mount/Euler/"
 statCells <- 0
-wrong <- 0; knowns <- 80 # 8 | > 15
+wrong <- 0; knowns <- 100 # 8 | > 15
 show2 <- 14 # 1,4,6,13,14
-shownoise <- c(1,2,3); showleg <- 0; perturb <- 0.5
-if (knowns > 8) {
-    if (perturb == 0) {
-        doSgenes <- c(5,10,15)
-    } else {
-        doSgenes <- 10
-    }
-} else {
-    if (!statCells) {
-        doSgenes <- c(50,100)
-    } else {
-        doSgenes <- 50
-    }
-    lost <- c(0.1, 0.9)
-}
+shownoise <- c(1,2,3); showleg <- 1; perturb <- -0.5
+if (knowns > 8) { if (perturb == 0) { doSgenes <- c(5,10,15) } else { doSgenes <- 10 }
+} else { if (!statCells) { doSgenes <- c(50,100) } else { doSgenes <- 50 }
+    lost <- c(0.1, 0.9) }
 highnoise <- 1; complete <- 1; Egenes <- 10; multi <- c(0.2, 0.1); noise2 <- 0.5
-if (wrong) {
-    lost <- c(0.1, 0.5)
-} else {
-    lost <- c(0.1, 0.5, 0.9)
-}
-if (!(show2 %in% c(1,13))) {
-    show <- c(1:4, 7:9, 6)
-} else {
-    show <- 2
-}
+if (wrong) { lost <- c(0.1, 0.5) } else { lost <- c(0.1, 0.5, 0.9) }
+if (!(show2 %in% c(1,13))) { show <- c(1:4, 7:9, 6) } else { show <- 2 }
 cols <- c("red", "blue", "darkgreen", "brown", "orange", "pink", "turquoise", "grey"); cols <- rep(cols[1:length(show)], 3)
-if (wrong | knowns == 8) {
-    parcols <- 2; height0 <- 5.5; lost2 <- lost[1:2]; leg <- 0
-} else {
-    parcols <- 3; height0 <- 8; lost2 <- lost; leg <- 2
-}
+parcols <- 3; height0 <- 8; lost2 <- lost; leg <- 2
+if (wrong | knowns == 8) { parcols <- 2; height0 <- height0/3*2; lost2 <- lost[1:2]; leg <- 0 }
 paras <- expand.grid(c(0,1), c(0,1), c(0,1)); box <- 1; scatter <- ""; dens <- 0; ymin <- 0.5; ymin2 <- 0
-if (6 %in% show2 | knowns > 15) {
-    if (4 == show2 & perturb == 0) {
-        pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2), width = height0)
-    } else {
-        pdf("temp.pdf", height = ((8/3)*length(doSgenes)+leg)*length(show2)-2.5*(1-wrong)*0.75, width = height0)
-    }
-} else {
-    a <- (5/4)
-    pdf("temp.pdf", height = (((8/3)*length(doSgenes)+leg)*length(show2))*a, width = height0*a)
-}
-if (wrong == 0 & knowns > 15) {
+setEPS()
+height1 <- 7.5
+if (knowns == 8 | perturb != 0) { if (statCells != 0 | perturb != 0) { height1 <- height1/4*2 } else { height1 <- height1/4*3 } }
+postscript("temp.eps", height = height1, width = height0)
+par(mar=c(3.85,4,2.75,1),oma=c(0,0,0,0))
+if (wrong == 0) {
     if (show2 == 4 & perturb == 0) {
-        par(mfrow=c((length(doSgenes)+1)*length(show2), parcols))
+        layout.mat <- matrix(c(rep(c(1,4,7),each=2),10,rep(c(2,5,8),each=2),11,rep(c(3,6,9),each=2),12),7)
     } else {
-        par(mfrow=c((length(doSgenes)+1)*length(show2)-1, parcols))
-    }
-} else {
-    par(mfrow=c(length(doSgenes)*length(show2), parcols))
-}
+        layout.mat <- matrix(c(rep(rep(1:2,each=2),2),3:6),3,byrow=1)
+        if (statCells==0) {
+            layout.mat <- matrix(c(rep(rep(1:2,each=2),2),rep(rep(3:4,each=2),2),5:8),5,byrow=1)
+        }
+        if (perturb != 0) {
+            layout.mat <- matrix(c(rep(rep(1:3,each=2),2),4:9),3,byrow=1)
+        }
+    } } else {
+          layout.mat <- matrix(c(rep(rep(1:2,each=2),2),rep(rep(3:4,each=2),2),rep(rep(5:6,each=2),2),7:10),7,byrow=1)
+      }
+layout(layout.mat)
 for (Sgenes in doSgenes) {
     for (k in 1:length(lost2)) {
         for (s in show2) {
-            if (!statCells) {
-                if (knowns > 15) {
-                    nCells <- Sgenes*10*2
-                } else {
-                    nCells <- 1000
-                }
-            } else {
-                nCells <- statCells
-            }
+            if (!statCells) { if (knowns > 15) { nCells <- Sgenes*10*2 } else { nCells <- 1000 } } else { nCells <- statCells }
             if (wrong) {
                 noise2 <- 0.5
                 main <- paste0(Sgenes, " P-genes, incorrect")
-                load(paste("~/Documents/unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+                load(paste0(path,paste("unem_misslabeled", highnoise, complete, noise2, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")))
             } else {
                 main <- paste0(Sgenes, " P-genes, unobserved")
                 if (knowns < Sgenes) {
-                    load(paste("~/Documents/unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+                    load(paste0(path,paste("unem_missing_unknowns", knowns, highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")))
                 } else {
-                    load(paste("~/Documents/unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_"))
+                    load(paste0(path,paste("unem_missing", highnoise, complete, Sgenes, Egenes, nCells, perturb, paste(c(multi, ".rda"), collapse = ""), sep = "_")))
                 }
             }
-            if (s == 4) {
-                ylab <- "perturbation profile correlation"
-            } else if (s == 1) {
-                ylab <- "normalised hamming distance"
-            } else if (s == 13) {
-                ylab <- "fraction of correct attachments"
-            } else if (s == 6) {
-                ylab <- "fraction of identified null samples"
-            } else if (s == 14) {
-                ylab <- "area under the precision recall curve"
-            }
+            if (s == 4) { ylab <- "perturbation profile correlation"
+            } else if (s == 1) { ylab <- "normalised hamming distance"
+            } else if (s == 13) { ylab <- "fraction of correct attachments"
+            } else if (s == 6) { ylab <- "fraction of identified null samples"
+            } else if (s == 14) { ylab <- "area under the precision-recall curve" }
             ylim <- c(ymin2,1)
             if (s < dim(result)[4]) {
-                if (dimnames(result)[[4]][s] == "time") {
-                    ylim <- NULL
-                }
+                if (dimnames(result)[[4]][s] == "time") { ylim <- NULL }
                 if (!(dimnames(result)[[4]][s] %in% c("cor","auc","theta","net"))) {
-                    ylab <- dimnames(result)[[4]][s]
-                }
-            } else {
-                if (s %in% c(101,103,105)) { ylab <- "PPV" }
-                if (s %in% c(102,104,106)) { ylab <- "NPV" }
-            }
+                    ylab <- dimnames(result)[[4]][s] }
+            } else { if (s %in% c(101,103,105)) { ylab <- "PPV" }
+                if (s %in% c(102,104,106)) { ylab <- "NPV" } }
             main <- paste0(main, ": ", lost[k])
             if (knowns < Sgenes) { main <- paste0(main, "\n unknowns: ", Sgenes-knowns) }
             databox <- NULL
@@ -757,17 +718,13 @@ for (Sgenes in doSgenes) {
                     TP <- result[,i,k,7,show]; FP <- result[,i,k,8,show]; databox <- cbind(databox, TP/(TP+FP))
                 } else if (s == 106) {
                     TN <- result[,i,k,11,show]; FN <- result[,i,k,12,show]; databox <- cbind(databox, TN/(TN+FN))
-                } else if (s == 14) {
-                    TP <- result[,i,k,2,6:9]+result[,i,k,9,6:9]
+                } else if (s == 14) { TP <- result[,i,k,2,6:9]+result[,i,k,9,6:9]
                     FP <- result[,i,k,3,6:9]+result[,i,k,10,6:9]
                     FN <- result[,i,k,8,6:9]+result[,i,k,12,6:9]
                     ## result[,i,k,s,6:9] <- TP/(TP+FP)
                     result[,i,k,s,6:9] <- (TP/(TP+FP)+TP/(TP+FN))/2
                     databox <- cbind(databox, result[,i,k,s,show])
-                } else {
-                    databox <- cbind(databox, result[,i,k,s,show])
-                }
-            }
+                } else { databox <- cbind(databox, result[,i,k,s,show]) } }
             mnem:::myboxplot(databox, col = cols, ylim = ylim, main = main, xlab = expression(sigma), ylab = ylab, box = box, scatter = scatter, dens = dens, xaxt = "n", border = cols, #notch = 1,
                       medcol = "black")
             axis(1, length(show)/2 + 0.5 + c(0, length(show), 2*length(show))[1:length(shownoise)], c(1,3,5)[shownoise])
@@ -776,63 +733,49 @@ for (Sgenes in doSgenes) {
         }
     }
 }
-if (wrong == 0 & knowns >= Sgenes & show2 %in% c(4,14) & showleg) {
-    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n", col = "transparent")
-    legend(0,1, c(expression(NEM~pi), "svm", "neural net"), c("red", "blue", "darkgreen"), box.col = "transparent", cex = 1.5, ncol = 1)
-    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n", col = "transparent")
-    legend(0,1, c("random forest", "missForest", "mice"), c("brown", "orange", "pink"), box.col = "transparent", cex = 1.5, ncol = 1)
-    hist(rnorm(1000), border = "white", freq = 0, ylim = c(0,1), xlim = c(0,3), main = "", yaxt = "n", xlab = "", ylab = "", xaxt = "n", col = "transparent")
-    legend(0,1, c("knn", "random"), c("turquoise", "grey"), box.col = "transparent", cex = 1.5, ncol = 1)
+if (showleg) {
+    if (wrong==1 | knowns == 8 | perturb != 0) { cex.leg <- 1 } else { cex.leg <- 1.5 }
+    par(mar=rep(0, 4))
+    plot.new()
+    legend("topleft",legend=c(expression(NEM~pi), "svm", "neural net"),col=c("red", "blue", "darkgreen"),fill=c("red", "blue", "darkgreen"),box.col = "transparent",cex = cex.leg,ncol = 1,border="transparent")
+    plot.new()
+    legend("topleft",legend=c("random forest", "missForest", "mice"),col=c("brown", "orange", "pink"),fill=c("brown", "orange", "pink"),box.col = "transparent",cex = cex.leg,ncol = 1,border="transparent")
+    plot.new()
+    legend("topleft",legend=c("knn", "random"),col=c("turquoise", "grey"),fill=c("turquoise", "grey"),box.col = "transparent",cex = cex.leg,ncol = 1,border="transparent")
 }
 dev.off()
 
 ## nempi scheme:
 
+set.seed(9247)
 D <- matrix(rnorm(10*20), 10)
-
 rownames(D) <- paste0("E", 1:10)
-
 Rho <- matrix(runif(5*20), 5)
-
 Rho[which(Rho[, 5] != max(Rho[, 5]))[1], 5] <- max(Rho[, 5])
-
 Rho <- apply(Rho, 2, function(x) return(x/sum(x)))
-
 Rho[which(Rho[, 5] != max(Rho[, 5]))[1], 5] <- max(Rho[, 5])
-
 phi <- matrix(c(1,0,0,0,0,
                 1,0,0,0,0,
                 0,1,0,0,0,
                 1,0,0,0,0,
                 0,0,0,1,0), 5)
-
 rownames(Rho) <- colnames(phi) <- rownames(phi) <- paste0("P", 1:5)
-
 colnames(D) <- colnames(Rho) <- paste0("S", 1:20)
-
 Rhod <- apply(Rho, 2, function(x) { y <- x; y[which(y != max(x))] <- 0; y[which(y > 0)] <- 1; return(y) })
-
-Rhod[, 11:20] <- 0
-
-pdf("temp.pdf", width = 10, height = 4)
+Rhod[, 11:20] <- -Rhod[, 11:20]
+pdf("Scheme_Rho.pdf", width = 10, height = 5)
 epiNEM::HeatmapOP(Rhod, col = "RdBu", colorkey = NULL, aspect = "iso", Rowv = 0, Colv = 0, cexRow = 2, cexCol = 2)
 dev.off()
-
-pdf("temp.pdf", width = 10, height = 8)
+pdf("Scheme_R.pdf", width = 10, height = 9)
 epiNEM::HeatmapOP(D, col = "RdBu", colorkey = NULL, aspect = "iso", Rowv = 0, Colv = 0, cexRow = 2, cexCol = 2)
 dev.off()
-
-pdf("temp.pdf", width = 5, height = 5)
-plotDnf(phi, edgelwd = 3, fontsize = 10)
+pdf("Scheme_phi.pdf", width = 5, height = 5)
+mnem::plotDnf(phi, edgelwd = 3, fontsize = 10)
 dev.off()
-
 Rhos <- apply(Rho, 2, function(x) { y <- x; y[which(y != max(x))] <- 0; y[which(y > 0)] <- 1; return(y) })
-
 Rhos <- Rhos + runif(length(Rhos), 0, 0.1)
-
 Rhos <- apply(Rhos, 2, function(x) return(x/sum(x)))
-
-pdf("temp.pdf", width = 10, height = 4)
+pdf("Scheme_Rho2.pdf", width = 10, height = 4)
 epiNEM::HeatmapOP(Rhos, col = "RdBu", colorkey = NULL, aspect = "iso", Rowv = 0, Colv = 0, cexRow = 2, cexCol = 2)
 dev.off()
 

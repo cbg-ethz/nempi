@@ -63,28 +63,28 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
                              replace = TRUE),
                       which(colnames(Gamma) %in% unknown))] <- 1
         } else if (type %in% "null") {
-            Gamma[, which(colnames(Gamma) %in% unknown)] <- 0
+            Gamma[, colnames(Gamma) %in% unknown] <- 0
         }
     }
     if (!full & sum(colnames(D) %in% unknown) == 0) {
-        unk <- which(apply(Gamma, 2, sum) == 0)
+        unk <- which(colSums(Gamma) == 0)
         if (length(unk) > 0) {
             colnames(D)[unk] <- unknown
             colnames(Gamma) <- colnames(D)
         } else {
-            stop(paste(c("No unlabeled samples available. ",
-                         "Either use full inference, change ",
-                         "column names or Gamma."), collapse = ""))
+            stop("No unlabeled samples available. ",
+                 "Either use full inference, change ",
+                 "column names or Gamma.")
         }
     }
     if (type %in% "random") {
-        Gamma[cbind(sample(seq_len(n), sum(apply(Gamma, 2, sum) == 0),
+        Gamma[cbind(sample(seq_len(n), sum(colSums(Gamma) == 0),
                          replace = TRUE),
-                  which(apply(Gamma, 2, sum) == 0))] <- 1
+                  which(colSums(Gamma) == 0))] <- 1
     }
     if (soft) {
         Gamma <- apply(Gamma, 2, function(x) return(x/sum(x)))
-        Gamma[which(is.na(Gamma))] <- 0
+        Gamma[is.na(Gamma)] <- 0
     }
     if (combi >= n) {
         combi <- n - 1
@@ -110,7 +110,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
     }
     while(!stop | time0) {
         count <- count + 1
-        miss <- which(apply(Gamma, 1, sum) == 0)
+        miss <- which(rowSums(Gamma) == 0)
         if (length(miss) >= length(Sgenes)-1) {
             res <- list()
             res$adj <- matrix(0, length(Sgenes), length(Sgenes))
@@ -175,24 +175,24 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
             return(Z)
         }
         if (any(pi == 0) & complete) {
-            pi[which(pi == 0)] <- 1
+            pi[pi == 0] <- 1
         }
         if (!full) {
-            G <- G[, which(colnames(Gamma) %in% unknown), drop = FALSE]
+            G <- G[, colnames(Gamma) %in% unknown, drop = FALSE]
         }
         if (complete) {
             Z <- expG(G, complete = complete)
             Z <- Z/colSums(Z)[col(Z)]
-            ll <- sum(apply(Z*(G + log(pi)/log(logtype)), 2, sum))
+            ll <- sum(colSums(Z*(G + log(pi)/log(logtype))))
             probs <- Z
         } else {
             probs <- expG(G, complete = complete)
             probs <- probs*pi
-            ll <- sum(log(apply(probs, 2, sum))/log(logtype))
+            ll <- sum(log(colSums(probs))/log(logtype))
             probs <- apply(probs, 2, function(x) return(x/sum(x)))
         }
         if (is.null(mw)) {
-            pi <- apply(probs, 1, sum)
+            pi <- rowSums(probs)
             pi <- pi/sum(pi)
         }
         ## ll <- res$score
@@ -200,12 +200,12 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
         piold <- pi
         if (soft) { G2 <- probs } else { G2 <- G }
         if (!full) {
-            Gamma[, which(colnames(Gamma) %in% unknown)] <- 0
+            Gamma[, colnames(Gamma) %in% unknown] <- 0
             if (soft) {
                 if (null) {
                     G2 <- G2[-1, ]
                 }
-                Gamma[, which(colnames(Gamma) %in% unknown)] <- G2
+                Gamma[, colnames(Gamma) %in% unknown] <- G2
             } else {
                 idx <- as.list(apply(G2, 2, function(x)
                     return(which(x == max(x, na.rm = TRUE)) - sub)))
@@ -214,8 +214,8 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
                                         function(x, idx) {
                                             y <- rep(x, length(idx[[x]]))
                                             return(y) }, idx)))
-                aidx <- aidx[which(aidx[, 2] %in%
-                                   which(colnames(Gamma) %in% unknown)), ]
+                aidx <- aidx[aidx[, 2] %in%
+                             which(colnames(Gamma) %in% unknown), ]
                 Gamma[aidx] <- 1
             }
         } else {
@@ -238,7 +238,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
         }
         if (!single) {
             Gamma <- lapply(seq_len(n), function(i) {
-                x <- apply(Gamma[which(H[i, ] == 1), , drop = FALSE], 2, max,
+                x <- apply(Gamma[H[i, ] == 1, , drop = FALSE], 2, max,
                            na.rm = TRUE)
                 return(x)
             })
@@ -257,7 +257,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
         llold <- ll
         Gammaold <- Gamma
         lls <- c(lls, ll)
-        if (verbose) { print(ll) }
+        if (verbose) { message(ll) }
         time0 <- FALSE
     }
     if (null) { pi <- pi[-1] }
@@ -271,6 +271,66 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
                  evopi = evopi, combi = combi, null = null)
     class(ures) <- "nempi"
     return(ures)
+}
+#' Plotting nempi
+#'
+#' Plot function for an object of class 'nempi'.
+#' @param x object of class 'nempi'
+#' @param barlist additional arguments for function 'barplot' from
+#' package 'graphics'
+#' @param heatlist additional arguments for function 'HeatmapOP'
+#' from package 'epiNEM'
+#' @param ... additional arguments for function 'plotDnf' from package 'mnem'
+#' @return list with aggregate Gamma and aggregate causal network phi
+#' @method plot nempi
+#' @author Martin Pirkl
+#' @export
+#' @importFrom mnem plotDnf transitive.closure
+#' @importFrom epiNEM HeatmapOP
+#' @examples
+#' D <- matrix(rnorm(1000*100), 1000, 100)
+#' colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
+#' result <- nempi(D)
+#' plot(result)
+plot.nempi <- function(x,barlist=list(),heatlist=list(),...) {
+    dnflist <- list(...)
+    lay.mat <- matrix(c(1,3,1,3,2,3,2,3),2)
+    layout(lay.mat)
+    a <- x$res$adj
+    genes <- getSgenes(x$Gamma)
+    colnames(a) <- rownames(a) <- genes
+    col <- seq_len(length(genes))
+    if (is.null(dnflist$nodecol)) {
+        if (is.null(barlist$col)) {
+            dnflist$nodecol <- list()
+            for (i in seq_len(length(genes))) {
+                dnflist$nodecol[[genes[i]]] <- col[i] 
+            }
+        } else {
+            dnflist$nodecol <- list()
+            for (i in seq_len(length(genes))) {
+                dnflist$nodecol[[genes[i]]] <- barlist$col[i] 
+            }
+        }
+    }
+    dnflist <- c(list(dnf=a),dnflist)
+    do.call(plotDnf,dnflist)
+    if (is.null(barlist$col)) {
+        barlist <- c(list(height=x$pi,col=col,
+                          main=expression(mixture~weights~pi)),
+                     barlist)
+    } else {
+        barlist <- c(list(height=x$pi,
+                          main=expression(mixture~weights~pi)),
+                     barlist)
+    }
+    do.call(barplot,barlist)
+    lay.mat <- matrix(c(1,3,1,3,2,3,2,3),2)
+    layout(lay.mat)
+    omega <- t(transitive.closure(x$res$adj))%*%x$Gamma
+    heatlist <- c(list(x=omega,main=expression(expectations~gamma)),heatlist)
+    h <- do.call(HeatmapOP,heatlist)
+    print(h, position=c(0, 0, 1, .5))
 }
 #' Bootstrapping function
 #'
@@ -375,7 +435,7 @@ classpi <- function(D, unknown = "", full = TRUE,
     if (is.null(size)) { size <- length(realnames) }
     D_bkup <- D
     D <- modData(D)
-    DK <- D[, which(colnames(D) != unknown)]
+    DK <- D[, colnames(D) != unknown]
     if (!full) {
         Gammafull <- matrix(0, length(realnames)*2,
                             sum(colnames(D) %in% unknown))
@@ -401,7 +461,7 @@ classpi <- function(D, unknown = "", full = TRUE,
         if (method %in% "randomForest") {
             sres <- randomForest(label ~ ., data = train)
         }
-        DU <- D[, which(colnames(D) == unknown), drop = FALSE]
+        DU <- D[, colnames(D) == unknown, drop = FALSE]
         test <- as.data.frame(t(DU))
         colnames(test) <- paste0("Var", seq_len(ncol(test)))
         traintest <- as.data.frame(t(D))
@@ -452,8 +512,8 @@ classpi <- function(D, unknown = "", full = TRUE,
             if (method %in% "nnet") {
                 Gamma <- rbind("0" = (1 - Gamma), Sgene = Gamma)
             }
-            Gamma[which(Gamma == 0)] <- 10^-323
-            ll <- sum(apply(log(Gamma), 2, max))
+            Gamma[Gamma == 0] <- 10^-323
+            ll <- sum(colMaxs(log(Gamma)))
             llold <- ll
             lls <- c(lls, ll)
         }
@@ -466,7 +526,7 @@ classpi <- function(D, unknown = "", full = TRUE,
     Gamma <- Gamma[seq_len(length(realnames)), ]
     if (!full) {
         GammaD <- getGamma(D)
-        GammaD[, which(colnames(D) %in% unknown)] <- Gamma
+        GammaD[, colnames(D) %in% unknown] <- Gamma
         Gamma <- GammaD
     }
     rownames(Gamma) <- realnames
@@ -529,11 +589,11 @@ classpi <- function(D, unknown = "", full = TRUE,
 pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
                   knowns = NULL) {
     Gamma <- getGamma(y$data)
-    Gamma[which(Gamma > 1)] <- 1
-    x$Gamma[which(is.na(x$Gamma) == TRUE)] <- 0
+    Gamma[Gamma > 1] <- 1
+    x$Gamma[is.na(x$Gamma)] <- 0
     Sgenes <- rownames(x$Gamma)
-    kept <- Sgenes[which(Sgenes %in%
-                                  unlist(strsplit(colnames(D), "_")))]
+    kept <- Sgenes[Sgenes %in%
+                   unlist(strsplit(colnames(D), "_"))]
     miss <- which(!(Sgenes %in% kept))
     combi <- min(x$combi, nrow(Gamma) - 1)
     null <- x$null
@@ -553,53 +613,53 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     B <- transitive.closure(y$Nem[[1]])
     ## Gammasoft <- rhosoft(y, D, combi = combi, null = null)
     Gammasoft <- apply(Gamma, 2, function(x) return(x/sum(x)))
-    Gammasoft[which(is.nan(Gammasoft) == TRUE)] <- 0
+    Gammasoft[is.nan(Gammasoft)] <- 0
     if (propagate) {
         x$Gamma <- t(A)%*%x$Gamma
     }
     Gammasoft <- t(B)%*%Gammasoft
     if (!is.null(knowns)) {
-        Gammasoft <- Gammasoft[which(rownames(Gammasoft) %in% knowns), ]
+        Gammasoft <- Gammasoft[rownames(Gammasoft) %in% knowns, ]
     }
     corres <- cor(as.vector(x$Gamma), as.vector(Gammasoft))
     gamsave <- x$Gamma
     x$Gamma <- apply(x$Gamma, 2, function(x) {
         y <- x*0
-        y[which(x > 1/nrow(Gamma))] <- 1
+        y[x > 1/nrow(Gamma)] <- 1
         return(y)
     })
     Gamma <- t(B)%*%Gamma
-    Gamma[which(Gamma > 1)] <- 1
+    Gamma[Gamma > 1] <- 1
     colnames(Gamma) <- colnames(x$Gamma) <- colnames(D)
     n <- nrow(A)
     if (!is.null(knowns)) {
-        B <- B[which(rownames(B) %in% knowns), which(colnames(B) %in% knowns)]
-        Gamma <- Gamma[which(rownames(Gamma) %in% knowns), ]
+        B <- B[rownames(B) %in% knowns, colnames(B) %in% knowns]
+        Gamma <- Gamma[rownames(Gamma) %in% knowns, ]
     }
     net <- (n*(n-1) - sum(abs(A - B)))/(n*(n-1))
     subtopo <- sum(x$res$subtopo == y$theta[[1]])/length(y$theta[[1]])
-    tp <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 1 &
-              Gamma[, which(colnames(x$Gamma) != unknown)] == 1)
-    fp <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 1 &
-              Gamma[, which(colnames(x$Gamma) != unknown)] == 0)
-    tn <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 0 &
-              Gamma[, which(colnames(x$Gamma) != unknown)] == 0)
-    fn <- sum(x$Gamma[, which(colnames(x$Gamma) != unknown)] == 0 &
-              Gamma[, which(colnames(x$Gamma) != unknown)] == 1)
+    tp <- sum(x$Gamma[, colnames(x$Gamma) != unknown] == 1 &
+              Gamma[, colnames(x$Gamma) != unknown] == 1)
+    fp <- sum(x$Gamma[, colnames(x$Gamma) != unknown] == 1 &
+              Gamma[, colnames(x$Gamma) != unknown] == 0)
+    tn <- sum(x$Gamma[, colnames(x$Gamma) != unknown] == 0 &
+              Gamma[, colnames(x$Gamma) != unknown] == 0)
+    fn <- sum(x$Gamma[, colnames(x$Gamma) != unknown] == 0 &
+              Gamma[, colnames(x$Gamma) != unknown] == 1)
     rates1 <- c(tp, fp, tn, fn)
     if (balanced) {
         known <- (((tp)/(tp+fn))+((tn)/(tn+fp)))/2
     } else {
         known <- (tp+tn)/(tp+tn+fp+fn)
     }
-    tp <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 1 &
-              Gamma[, which(colnames(x$Gamma) == unknown)] == 1)
-    fp <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 1 &
-              Gamma[, which(colnames(x$Gamma) == unknown)] == 0)
-    tn <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 0 &
-              Gamma[, which(colnames(x$Gamma) == unknown)] == 0)
-    fn <- sum(x$Gamma[, which(colnames(x$Gamma) == unknown)] == 0 &
-              Gamma[, which(colnames(x$Gamma) == unknown)] == 1)
+    tp <- sum(x$Gamma[, colnames(x$Gamma) == unknown] == 1 &
+              Gamma[, colnames(x$Gamma) == unknown] == 1)
+    fp <- sum(x$Gamma[, colnames(x$Gamma) == unknown] == 1 &
+              Gamma[, colnames(x$Gamma) == unknown] == 0)
+    tn <- sum(x$Gamma[, colnames(x$Gamma) == unknown] == 0 &
+              Gamma[, colnames(x$Gamma) == unknown] == 0)
+    fn <- sum(x$Gamma[, colnames(x$Gamma) == unknown] == 0 &
+              Gamma[, colnames(x$Gamma) == unknown] == 1)
     rates2 <- c(tp, fp, tn, fn)
     if (balanced) {
         known2 <- (((tp)/(tp+fn))+((tn)/(tn+fp)))/2
@@ -614,7 +674,7 @@ pifit <- function(x, y, D, unknown = "", balanced = FALSE, propagate = TRUE,
     for (cut in c(2,seq(1,0, length.out = 100),-1)) {
         gamtmp <- apply(gamsave, 2, function(x) {
             y <- x*0
-            y[which(x > cut)] <- 1
+            y[x > cut] <- 1
             return(y)
         })
         gamtmp2 <- Gamma
