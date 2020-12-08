@@ -393,7 +393,6 @@ nempibs <- function(D, bsruns = 100, bssize = 0.5, replace = TRUE, ...) {
 #' par(mfrow=c(2,3))
 #' plotConvergence(result)
 plotConvergence.nempi <- function(x, type="b", ...) {
-    require(mnem)
     plot(x$lls, main = "log odds evolution", ylab = "log odds",
          xlab = "iterations", type = type, ...)
     hist(x$probs, main = "sample probabilities", xlab = "probabilities")
