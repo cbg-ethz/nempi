@@ -281,7 +281,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
 #' @param heatlist additional arguments for function 'HeatmapOP'
 #' from package 'epiNEM'
 #' @param ... additional arguments for function 'plotDnf' from package 'mnem'
-#' @return list with aggregate Gamma and aggregate causal network phi
+#' @return Plots of the optimal network phi and perturbation matrix.
 #' @method plot nempi
 #' @author Martin Pirkl
 #' @export
@@ -369,15 +369,18 @@ nempibs <- function(D, bsruns = 100, bssize = 0.5, replace = TRUE, ...) {
     }
     return(list(Gamma = aggGamma, phi = aggPhi))
 }
-#' Plot convergence
+#' Plot convergence of EM
 #'
 #' Produces different convergence plots based on a nempi object
 #' @param x nempi object
+#' @param type see ?plot.default
 #' @param ... additional parameters for plot
 #' @return plot
 #' @author Martin Pirkl
 #' @export
-#' @import graphics mnem
+#' @method plotConvergence nempi
+#' @import graphics
+#' @importFrom mnem plotConvergence
 #' @examples
 #' D <- matrix(rnorm(1000*100), 1000, 100)
 #' colnames(D) <- sample(seq_len(5), 100, replace = TRUE)
@@ -389,18 +392,23 @@ nempibs <- function(D, bsruns = 100, bssize = 0.5, replace = TRUE, ...) {
 #' result <- nempi(D, Gamma = Gamma)
 #' par(mfrow=c(2,3))
 #' plotConvergence(result)
-plotConvergence <- function(x, ...) {
+plotConvergence.nempi <- function(x, type="b", ...) {
+    require(mnem)
     plot(x$lls, main = "log odds evolution", ylab = "log odds",
-         xlab = "iterations", ...)
+         xlab = "iterations", type = type, ...)
     hist(x$probs, main = "sample probabilities", xlab = "probabilities")
     plot(x$evoGamma, main = expression(evolution ~ of ~ Gamma),
-         ylab = "sum of absolute distance", xlab = "iterations", ...)
+         ylab = "sum of absolute distance", xlab = "iterations",
+         type = type, ...)
     plot(x$evopi, main= expression(evolution ~ of ~ pi),
-         ylab = "sum of absolute distance", xlab = "iterations", ...)
+         ylab = "sum of absolute distance", xlab = "iterations",
+         type = type, ...)
     plot(x$evotheta, main= expression(evolution ~ of ~ theta),
-         ylab = "hamming distance", xlab = "iterations", ...)
+         ylab = "hamming distance", xlab = "iterations",
+         type = type, ...)
     plot(x$evophi, main = expression(evolution ~ of ~ phi),
-         ylab = "hamming distance", xlab = "iterations", ...)
+         ylab = "hamming distance", xlab = "iterations",
+         type = type, ...)
 }
 #' Classification
 #'

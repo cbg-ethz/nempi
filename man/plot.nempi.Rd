@@ -18,7 +18,7 @@ from package 'epiNEM'}
 \item{...}{additional arguments for function 'plotDnf' from package 'mnem'}
 }
 \value{
-list with aggregate Gamma and aggregate causal network phi
+Plots of the optimal network phi and perturbation matrix.
 }
 \description{
 Plot function for an object of class 'nempi'.

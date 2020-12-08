@@ -1,6 +1,7 @@
 ---
-title: "Nested Effects Models-based perturbation inference  \n
-Inference of unobserved perturbations from gene expression profiles."
+title: |
+    | Nested Effects Models-based perturbation inference:
+    | Inference of unobserved perturbations from gene expression profiles.
 author: "Martin Pirkl, Niko Beerenwinkel"
 date: "`r Sys.Date()`"
 graphics: yes
@@ -57,10 +58,6 @@ Use devtools to install the latest version from github or use the
 BiocManahger to install the package from bioconductor.
 
 ```{r, eval=FALSE}
-install.packages("devtools")
-library(devtools)
-install_github("cbg-ethz/nempi")
-
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 BiocManager::install("nempi")
