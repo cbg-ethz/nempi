@@ -1,7 +1,7 @@
 Package: nempi
 Type: Package
 Title: Inferring unobserved perturbations from gene expression data
-Version: 0.99.5
+Version: 0.99.6
 Authors@R: person("Martin", "Pirkl", 
     email = "martinpirkl@yahoo.de",
     role = c("aut", "cre"))
