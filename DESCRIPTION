@@ -1,7 +1,7 @@
 Package: nempi
 Type: Package
 Title: Inferring unobserved perturbations from gene expression data
-Version: 0.99.8
+Version: 0.99.9
 Authors@R: person("Martin", "Pirkl", 
     email = "martinpirkl@yahoo.de",
     role = c("aut", "cre"))
@@ -24,7 +24,7 @@ biocViews: Software, GeneExpression, DifferentialExpression,
 Imports: e1071, nnet, randomForest, naturalsort, 
     graphics, stats, utils, matrixStats, epiNEM
 VignetteBuilder: knitr
-Suggests: knitr, BiocGenerics
+Suggests: knitr, BiocGenerics, rmarkdown
 BugReports: https://github.com/cbg-ethz/nempi/issues
 URL: https://github.com/cbg-ethz/nempi/
 RoxygenNote: 7.1.1
