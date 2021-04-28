@@ -182,6 +182,7 @@ nempi <- function(D, unknown = "", Gamma = NULL, type = "null", full = TRUE,
         }
         if (complete) {
             Z <- expG(G, complete = complete)
+            Z <- Z*pi
             Z <- Z/colSums(Z)[col(Z)]
             ll <- sum(colSums(Z*(G + log(pi)/log(logtype))))
             probs <- Z
