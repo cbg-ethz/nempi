@@ -1,4 +1,4 @@
-# Files desription:
+# File description:
 
 - TCGA.r: to download and process publicly available TCGA data
 
