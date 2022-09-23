@@ -190,7 +190,7 @@ The final perturbation matrix $\Omega$ over all samples is slightly
 different from the matrix $\Gamma$ we used as input. $\Gamma$ only denotes 
 the most upstream P-gene perturbed. E.g., if A is upstream of B, than 
 $\Gamma$ only denotes a perturbation of A, even though B is also perturbed 
-in every samples in which B is perturbed. We can compute it by the 
+in every samples in which A is perturbed. We can compute it by the 
 matrix multiplication $\Omega = \phi^T \times \Gamma$.
 
 ```{r}
