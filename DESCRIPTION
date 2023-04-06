@@ -24,7 +24,7 @@ biocViews: Software, GeneExpression, DifferentialExpression,
 Imports: e1071, nnet, randomForest, naturalsort, 
     graphics, stats, utils, matrixStats, epiNEM
 VignetteBuilder: knitr
-Suggests: knitr, BiocGenerics, rmarkdown, RUnit
+Suggests: knitr, BiocGenerics, rmarkdown, RUnit, BiocStyle
 BugReports: https://github.com/cbg-ethz/nempi/issues
 URL: https://github.com/cbg-ethz/nempi/
 RoxygenNote: 7.1.1
