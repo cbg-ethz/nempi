@@ -68,6 +68,9 @@ if (data == "csv") {
         }
         gc()
     }
+    saveRDS(M[[1]], file = paste0(path, "Counts_Pilot.rds"))
+    saveRDS(M[[2]], file = paste0(path, "Counts_Epistasis.rds"))
+    saveRDS(M[[3]], file = paste0(path, "Counts_Main.rds"))
     genes <- rownames(M[[1]])
     for (i in 2:3) {
         genes <- intersect(genes, rownames(M[[i]]))
