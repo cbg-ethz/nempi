@@ -305,12 +305,12 @@ plot.nempi <- function(x,barlist=list(),heatlist=list(),...) {
         if (is.null(barlist$col)) {
             dnflist$nodecol <- list()
             for (i in seq_len(length(genes))) {
-                dnflist$nodecol[[genes[i]]] <- col[i] 
+                dnflist$nodecol[[genes[i]]] <- col[i]
             }
         } else {
             dnflist$nodecol <- list()
             for (i in seq_len(length(genes))) {
-                dnflist$nodecol[[genes[i]]] <- barlist$col[i] 
+                dnflist$nodecol[[genes[i]]] <- barlist$col[i]
             }
         }
     }
@@ -326,12 +326,13 @@ plot.nempi <- function(x,barlist=list(),heatlist=list(),...) {
                      barlist)
     }
     do.call(barplot,barlist)
-    lay.mat <- matrix(c(1,3,1,3,2,3,2,3),2)
+    lay.mat <- matrix(c(1,3,1,3,2,4,2,4),2)
     layout(lay.mat)
     omega <- t(transitive.closure(x$res$adj))%*%x$Gamma
-    heatlist <- c(list(x=omega,main=expression(expectations~gamma)),heatlist)
-    h <- do.call(HeatmapOP,heatlist)
-    print(h, position=c(0, 0, 1, .5))
+    h <- do.call(HeatmapOP,c(list(x=omega,main="perturbation profile"),heatlist))
+    print(h, position=c(0, 0, .5, .5))
+    h <- do.call(HeatmapOP,c(list(x=x$Gamma,main=expression(expectations~Gamma)),heatlist))
+    print(h, position=c(.5, 0, 1, .5))
 }
 #' Bootstrapping function
 #'
